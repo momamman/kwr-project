@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>User Management — Admin</title>
+  <style>
+    /* Reuse styles from index.html */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --red:        #7B1515;
+      --red-dark:   #4e0d0d;
+      --bg:         #eef0f4;
+      --card:       #ffffff;
+      --border:     #dde1e7;
+      --text:       #1e2732;
+      --muted:      #6b7280;
+      --radius:     14px;
+      --shadow-md:  0 4px 24px rgba(0,0,0,.09);
+    }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      padding: 40px 20px;
+    }
+    .container { max-width: 800px; margin: 0 auto; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+    .btn {
+      padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; font-family: inherit;
+    }
+    .btn-red { background: var(--red); color: #fff; }
+    .btn-ghost { background: #fff; border: 1.5px solid var(--border); }
+    .card { background: var(--card); padding: 30px; border-radius: var(--radius); box-shadow: var(--shadow-md); margin-bottom: 30px; }
+    h2 { margin-bottom: 20px; color: var(--red); font-size: 18px; text-transform: uppercase; }
+    .field { margin-bottom: 15px; display: flex; flex-direction: column; gap: 5px; }
+    .field label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--muted); }
+    input, select { border: 1.5px solid var(--border); padding: 10px; border-radius: 8px; width: 100%; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th { text-align: left; padding: 12px; border-bottom: 2px solid var(--border); font-size: 11px; text-transform: uppercase; color: var(--muted); }
+    td { padding: 12px; border-bottom: 1px solid var(--border); font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>User Management</h1>
+      <a href="index.html" class="btn btn-ghost">Back to Orders</a>
+    </div>
+
+    <div class="card">
+      <h2>Create New User</h2>
+      <form id="createUserForm">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div class="field">
+            <label>Full Name</label>
+            <input type="text" id="newName" required placeholder="John Doe">
+          </div>
+          <div class="field">
+            <label>Email Address</label>
+            <input type="email" id="newEmail" required placeholder="john@example.com">
+          </div>
+          <div class="field">
+            <label>Password</label>
+            <input type="password" id="newPassword" required placeholder="••••••••">
+          </div>
+          <div class="field">
+            <label>Role</label>
+            <select id="newRole">
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </div>
+        <button type="submit" class="btn btn-red" style="margin-top: 10px;">Create User</button>
+      </form>
+    </div>
+
+    <div class="card">
+      <h2>Existing Users</h2>
+      <table id="usersTable">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Role</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td colspan="3" style="text-align: center;">Loading users...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/db.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    (async function init() {
+      const authData = await auth.checkAuth('admin');
+      if (!authData) return;
+
+      loadUsers();
+    })();
+
+    async function loadUsers() {
+      const { data: users, error } = await db
+        .from('profiles')
+        .select('*')
+        .order('full_name', { ascending: true });
+
+      if (error) {
+        console.error('Error loading users:', error);
+        return;
+      }
+
+      // Note: profiles table doesn't have email by default in my script, 
+      // but the trigger sets full_name to email if meta is empty.
+      // To get emails, we would need to join with auth.users which is restricted.
+      // However, we can use the 'user' metadata if we have it or just show names.
+      // For this demo, let's assume we want to show emails if we can.
+      
+      const tbody = document.querySelector('#usersTable tbody');
+      tbody.innerHTML = users.map(u => `
+        <tr>
+          <td>${u.full_name || 'N/A'}</td>
+          <td>${u.full_name.includes('@') ? u.full_name : 'N/A'}</td>
+          <td><span style="background: ${u.role === 'admin' ? '#fee2e2' : '#f3f4f6'}; color: ${u.role === 'admin' ? '#b91c1c' : '#374151'}; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase;">${u.role}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    document.getElementById('createUserForm').onsubmit = async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('newEmail').value;
+      const password = document.getElementById('newPassword').value;
+      const full_name = document.getElementById('newName').value;
+      const role = document.getElementById('newRole').value;
+
+      // Note: Supabase signUp will automatically be handled by our trigger
+      // BUT signUp usually signs in the new user immediately unless we use service role.
+      // For a client-side admin panel, we can use db.auth.signUp
+      // but it might sign out the admin. To prevent this, we should ideally use an Edge Function.
+      // Given the simple setup, I'll use signUp and explain it might need a re-login if not configured.
+      // Actually, Supabase has an 'inviteUserByEmail' but that's different.
+      
+      const { data, error } = await db.auth.signUp({
+        email,
+        password,
+        options: {
+          data: { full_name, role }
+        }
+      });
+
+      if (error) {
+        alert('Error creating user: ' + error.message);
+      } else {
+        alert('User created successfully!');
+        document.getElementById('createUserForm').reset();
+        loadUsers();
+      }
+    };
+  </script>
+</body>
+</html>
