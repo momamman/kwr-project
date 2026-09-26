@@ -367,10 +367,45 @@
       border-bottom: 2px solid var(--border);
     }
     td {
-      padding: 10px 14px;
+      padding: 12px 14px;
       border-bottom: 1px solid var(--border);
       font-size: 13.5px;
     }
+
+    /* Text-wrapped address column */
+    .td-address {
+      max-width: 260px;
+      white-space: normal;
+      word-wrap: break-word;
+      word-break: break-word;
+      line-height: 1.4;
+      font-size: 12.5px;
+      color: #334155;
+    }
+
+    /* Clickable invoice row */
+    .clickable-row {
+      cursor: pointer;
+      transition: background 0.18s;
+    }
+    .clickable-row:hover {
+      background: #f8fafc;
+    }
+
+    /* Status Badges */
+    .status-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+    .status-badge.confirmed { background: #dbeafe; color: #1e40af; border: 1px solid #bfdbfe; }
+    .status-badge.on_hire { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+    .status-badge.returned { background: #d1fae5; color: #065f46; border: 1px solid #a7f3d0; }
+    .status-badge.pending { background: #f3f4f6; color: #374151; border: 1px solid #e5e7eb; }
 
     .btn {
       padding: 10px 20px;
@@ -456,20 +491,24 @@
     }
     .ai-chip:hover { background: rgba(255,255,255,0.25); }
 
-    /* ── REFUND MODAL (SUPER ADMIN) ──────────────────────────────────── */
+    /* ── MODALS (REFUND & CONFIRMATION INVOICE) ────────────────────────── */
     .modal-overlay {
       position: fixed; inset: 0;
       background: rgba(15, 23, 42, 0.7);
       backdrop-filter: blur(4px);
       display: none; justify-content: center; align-items: center;
       z-index: 1000;
+      padding: 20px;
+      overflow-y: auto;
     }
     .modal-card {
       background: #fff;
       border-radius: 16px;
-      width: 100%; max-width: 500px;
-      padding: 30px;
+      width: 100%; max-width: 680px;
+      padding: 32px;
       box-shadow: var(--shadow-lg);
+      max-height: 90vh;
+      overflow-y: auto;
     }
 
     #toast {
@@ -521,11 +560,14 @@
     <button class="tab-btn active" id="btn-tab-invoicing" onclick="switchTab('invoicing')">
       <span>🧾</span> 1. Invoicing & Transactions
     </button>
+    <button class="tab-btn" id="btn-tab-all-invoices" onclick="switchTab('all-invoices')">
+      <span>📋</span> 2. All Invoices (Admin Only)
+    </button>
     <button class="tab-btn" id="btn-tab-data-entry" onclick="switchTab('data-entry')">
-      <span>📝</span> 2. Data Entry (Legacy Ingestion)
+      <span>📝</span> 3. Data Entry (Legacy DB)
     </button>
     <button class="tab-btn" id="btn-tab-analysis" onclick="switchTab('analysis')">
-      <span>📊</span> 3. Analysis & AI Insights
+      <span>📊</span> 4. Analysis & AI Insights
     </button>
   </nav>
 
@@ -660,16 +702,16 @@
           </thead>
           <tbody>
             <tr>
-              <td>#0001</td>
+              <td>#INV-0001</td>
               <td>Amina Bello (Gwarimpa Event)</td>
               <td>₦ 25,000.00</td>
               <td><span style="background: #fef3c7; color: #b45309; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px;">HELD</span></td>
               <td>
-                <button class="btn btn-success deposit-payout-btn" onclick="openRefundModal('#0001', 'Amina Bello', 25000)">💳 Initiate Payout</button>
+                <button class="btn btn-success deposit-payout-btn" onclick="openRefundModal('#INV-0001', 'Amina Bello', 25000)">💳 Initiate Payout</button>
               </td>
             </tr>
             <tr>
-              <td>#0002</td>
+              <td>#INV-0002</td>
               <td>Chief Okafor Catering</td>
               <td>₦ 50,000.00</td>
               <td><span style="background: #d1fae5; color: #047857; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px;">REFUNDED</span></td>
@@ -682,7 +724,55 @@
     </div>
 
     <!-- =================================================================== -->
-    <!-- TAB 2: DATA ENTRY (LEGACY DATA INGESTION)                          -->
+    <!-- TAB 2: ALL INVOICES (ADMIN & SUPER ADMIN ONLY)                      -->
+    <!-- =================================================================== -->
+    <div id="tab-all-invoices" class="tab-content">
+      <div class="top-bar">
+        <div class="form-title">
+          <h2>📋 All Invoices & Master Directory</h2>
+          <p>Comprehensive list view of all transactions across all statuses. Click any invoice line to view its confirmation page.</p>
+        </div>
+        <div style="text-align: right;">
+          <span style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 11px;">👑 ADMIN & SUPER ADMIN ONLY</span>
+        </div>
+      </div>
+
+      <!-- Filter Controls & Search -->
+      <div class="search-bar-container" style="margin-bottom: 20px;">
+        <div class="search-input-wrapper">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="allInvoicesSearchInput" placeholder="Filter invoices by Invoice #, Customer, Delivery Address, or Amount..." oninput="filterAllInvoicesTable(this.value)">
+        </div>
+        <select id="invoiceStatusFilter" style="border: 1.5px solid var(--border); padding: 11px 14px; border-radius: 8px; font-weight: 700; font-size: 13px;" onchange="filterInvoiceByStatus(this.value)">
+          <option value="ALL">All Statuses</option>
+          <option value="CONFIRMED">Confirmed (not gone out)</option>
+          <option value="OUT_ON_HIRE">Out on hire</option>
+          <option value="RETURNED">Returned</option>
+          <option value="PENDING">Pending</option>
+        </select>
+      </div>
+
+      <!-- All Invoices Table List -->
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 110px;">Invoice No.</th>
+            <th style="width: 110px;">Date</th>
+            <th>Customer Name</th>
+            <th style="width: 280px;">Delivery Address (Text Wrapped)</th>
+            <th style="width: 140px;">Total Rental Cost</th>
+            <th style="width: 170px;">Transaction Status</th>
+            <th style="width: 100px; text-align: center;">Action</th>
+          </tr>
+        </thead>
+        <tbody id="allInvoicesListBody">
+          <!-- Injected dynamically -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- TAB 3: DATA ENTRY (LEGACY DATA INGESTION)                          -->
     <!-- =================================================================== -->
     <div id="tab-data-entry" class="tab-content">
       <div class="top-bar">
@@ -767,7 +857,7 @@
     </div>
 
     <!-- =================================================================== -->
-    <!-- TAB 3: ANALYSIS & AI INSIGHTS                                      -->
+    <!-- TAB 4: ANALYSIS & AI INSIGHTS                                      -->
     <!-- =================================================================== -->
     <div id="tab-analysis" class="tab-content">
       <div class="top-bar">
@@ -832,10 +922,77 @@
 </div><!-- /.page -->
 
 <!-- ======================================================================= -->
+<!-- CLICKABLE CONFIRMATION INVOICE DETAIL MODAL                             -->
+<!-- ======================================================================= -->
+<div class="modal-overlay" id="invoiceDetailModal">
+  <div class="modal-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--red); padding-bottom: 16px; margin-bottom: 20px;">
+      <div>
+        <h2 style="font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 800; color: var(--red);" id="modalInvoiceNo">INVOICE #INV-0001</h2>
+        <p style="font-size: 12px; color: var(--muted);" id="modalInvoiceDate">Issued: 2026-09-26</p>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <select id="modalInvoiceStatusSelect" style="font-weight: 700; padding: 6px 12px; border-radius: 6px; font-size: 12px; border: 1.5px solid var(--border);" onchange="updateInvoiceStatusFromModal(this.value)">
+          <option value="CONFIRMED">Confirmed (not gone out)</option>
+          <option value="OUT_ON_HIRE">Out on hire</option>
+          <option value="RETURNED">Returned</option>
+          <option value="PENDING">Pending</option>
+        </select>
+        <button onclick="closeInvoiceDetailModal()" style="border:none; background:none; font-size: 22px; cursor:pointer; color: var(--muted);">✕</button>
+      </div>
+    </div>
+
+    <!-- Customer & Delivery Info -->
+    <div style="background: #f8fafc; border: 1.5px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 20px;">
+      <div class="grid-2">
+        <div>
+          <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--muted);">Customer / Billed To</div>
+          <div style="font-size: 15px; font-weight: 800; color: var(--text); margin-top: 4px;" id="modalCustomerName">Amina Bello</div>
+          <div style="font-size: 12.5px; color: var(--muted);" id="modalCustomerContact">+234 809 266 0766 · amina@example.com</div>
+        </div>
+        <div>
+          <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--muted);">Delivery Venue / Address</div>
+          <div style="font-size: 13px; font-weight: 600; color: var(--text); margin-top: 4px; line-height: 1.4;" id="modalCustomerAddress">Plot 541A, 4TH Avenue, Gwarimpa Housing Estate, Gwarimpa, Abuja FCT</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Itemized List Table -->
+    <div class="section-title">📦 Itemized Rental Charges</div>
+    <table>
+      <thead>
+        <tr>
+          <th>Qty</th>
+          <th>Item Description</th>
+          <th>Daily Rate</th>
+          <th>Total Charge</th>
+        </tr>
+      </thead>
+      <tbody id="modalInvoiceItemsBody">
+        <!-- Injected -->
+      </tbody>
+    </table>
+
+    <!-- Totals Summary -->
+    <div class="summary-box" style="margin-top: 10px;">
+      <div class="summary-row"><span>Subtotal Rental Charge:</span> <strong id="modalSubtotal">₦ 0.00</strong></div>
+      <div class="summary-row"><span>Refundable Caution Deposit:</span> <strong id="modalCaution">₦ 0.00</strong></div>
+      <div class="summary-row"><span>Logistics & Transport:</span> <strong id="modalTransport">₦ 0.00</strong></div>
+      <div class="summary-row total"><span>Total Payable:</span> <strong id="modalGrandTotal">₦ 0.00</strong></div>
+    </div>
+
+    <div style="margin-top: 24px; display: flex; gap: 10px; justify-content: flex-end;">
+      <button class="btn btn-ghost" onclick="window.print()">🖨️ Print Confirmation Invoice</button>
+      <button class="btn btn-red" onclick="closeInvoiceDetailModal()">Close Window</button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================================= -->
 <!-- REFUND PAYOUT MODAL (SUPER ADMIN ONLY)                                  -->
 <!-- ======================================================================= -->
 <div class="modal-overlay" id="refundModal">
-  <div class="modal-card">
+  <div class="modal-card" style="max-width: 500px;">
     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
       <h3 style="font-size: 16px; font-weight: 800; color: var(--red);">💳 Refundable Deposit Payout</h3>
       <button onclick="closeRefundModal()" style="border:none; background:none; font-size: 18px; cursor:pointer;">✕</button>
@@ -887,10 +1044,90 @@
 <script src="js/auth.js"></script>
 
 <script>
-/* ── APP STATE & DATA ─────────────────────────────────────────────────── */
+/* ── APP STATE & MASTER INVOICES DATA ─────────────────────────────────── */
 let currentUser = null;
 let currentRole = 'user';
 let rowId = 0;
+let activeSelectedInvoice = null;
+
+// Master Invoices Database Store
+const MASTER_INVOICES = [
+  {
+    invoiceNo: '#INV-0001',
+    date: '2026-09-26',
+    customerName: 'Amina Bello',
+    phone: '+234 809 266 0766',
+    email: 'amina@example.com',
+    address: 'Plot 541A, 4TH Avenue, Gwarimpa Housing Estate, Gwarimpa, Abuja FCT',
+    totalCost: 185000,
+    subtotal: 145000,
+    caution: 25000,
+    transport: 15000,
+    status: 'CONFIRMED',
+    items: [
+      { qty: 20, desc: 'Chafing Dish Single (Roll Top)', price: 3500, total: 70000 },
+      { qty: 200, desc: 'Dinner Plate Porcelain (White)', price: 150, total: 30000 },
+      { qty: 150, desc: 'Wine Glass (Stemmed)', price: 120, total: 18000 },
+      { qty: 150, desc: 'Stainless Steel Cutlery Set', price: 80, total: 12000 },
+      { qty: 10, desc: 'Serving Tray Oval (Stainless)', price: 1500, total: 15000 }
+    ]
+  },
+  {
+    invoiceNo: '#INV-0002',
+    date: '2026-09-24',
+    customerName: 'Chief Okafor Catering Services',
+    phone: '+234 703 068 6500',
+    email: 'okafor.catering@gmail.com',
+    address: 'Suite 12, Transcorp Hilton Event Center, Aguiyi Ironsi Way, Maitama, Abuja FCT',
+    totalCost: 320000,
+    subtotal: 250000,
+    caution: 50000,
+    transport: 20000,
+    status: 'OUT_ON_HIRE',
+    items: [
+      { qty: 40, desc: 'Chafing Dish Double (Standard)', price: 3000, total: 120000 },
+      { qty: 500, desc: 'Dinner Plate Porcelain (White)', price: 150, total: 75000 },
+      { qty: 350, desc: 'Highball Glass (Cocktail)', price: 100, total: 35000 },
+      { qty: 4, desc: 'Juice Dispenser (12 Litre)', price: 5000, total: 20000 }
+    ]
+  },
+  {
+    invoiceNo: '#INV-0003',
+    date: '2026-09-20',
+    customerName: 'Hadiza Usman Wedding Banquet',
+    phone: '+234 802 334 9911',
+    email: 'hadiza.usman@live.com',
+    address: 'No 45 Kwame Nkrumah Crescent, Off Tiamiyu Savage, Asokoro, Abuja FCT',
+    totalCost: 95000,
+    subtotal: 75000,
+    caution: 15000,
+    transport: 5000,
+    status: 'RETURNED',
+    items: [
+      { qty: 10, desc: 'Chafing Dish Single (Roll Top)', price: 3500, total: 35000 },
+      { qty: 200, desc: 'Wine Glass (Stemmed)', price: 120, total: 24000 },
+      { qty: 200, desc: 'Stainless Steel Cutlery Set', price: 80, total: 16000 }
+    ]
+  },
+  {
+    invoiceNo: '#INV-0004',
+    date: '2026-09-26',
+    customerName: 'Kwara Events & Hospitality Ltd',
+    phone: '+234 813 555 7788',
+    email: 'events@kwara-group.ng',
+    address: 'Phase 3 Banquet Hall, City Center, Central Business District, Abuja FCT',
+    totalCost: 210000,
+    subtotal: 170000,
+    caution: 30000,
+    transport: 10000,
+    status: 'PENDING',
+    items: [
+      { qty: 30, desc: 'Chafing Dish Single (Roll Top)', price: 3500, total: 105000 },
+      { qty: 300, desc: 'Dinner Plate Porcelain (White)', price: 150, total: 45000 },
+      { qty: 200, desc: 'Highball Glass (Cocktail)', price: 100, total: 20000 }
+    ]
+  }
+];
 
 // Master Catalog Items for Autocomplete
 const INVENTORY_CATALOG = [
@@ -934,19 +1171,25 @@ const INVENTORY_CATALOG = [
   document.getElementById('fStartDate').value = today;
   document.getElementById('fEndDate').value = today;
 
+  // Render All Invoices Table List
+  renderAllInvoicesTable(MASTER_INVOICES);
+
   // Initialize Charts in Analysis Tab
   initCharts();
 })();
 
 /* ── ROLE-BASED TAB SWITCHING ──────────────────────────────────────────── */
 function setupTabPermissions() {
-  const tabs = ['invoicing', 'data-entry', 'analysis'];
+  const tabs = ['invoicing', 'all-invoices', 'data-entry', 'analysis'];
   tabs.forEach(tab => {
     const btn = document.getElementById(`btn-tab-${tab}`);
+    if (!btn) return;
     const canAccess = auth.canAccessTab(currentRole, tab.replace('-', '_'));
     if (!canAccess && currentRole !== 'super_admin' && currentRole !== 'admin') {
       btn.classList.add('disabled');
-      btn.innerHTML += `<span class="tab-lock-icon">🔒</span>`;
+      if (!btn.querySelector('.tab-lock-icon')) {
+        btn.innerHTML += `<span class="tab-lock-icon">🔒</span>`;
+      }
     }
   });
 
@@ -968,6 +1211,104 @@ function switchTab(tabName) {
 
   document.getElementById(`btn-tab-${tabName}`).classList.add('active');
   document.getElementById(`tab-${tabName}`).classList.add('active');
+}
+
+/* ── ALL INVOICES TAB LIST RENDERING & CLICK INTERACTION ───────────────── */
+function renderAllInvoicesTable(invoices) {
+  const tbody = document.getElementById('allInvoicesListBody');
+  if (!invoices || invoices.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--muted); padding: 30px;">No invoices found matching your filter criteria.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = invoices.map((inv, idx) => {
+    let statusClass = 'pending';
+    let statusLabel = 'Pending';
+    if (inv.status === 'CONFIRMED') { statusClass = 'confirmed'; statusLabel = 'Confirmed (not gone out)'; }
+    else if (inv.status === 'OUT_ON_HIRE') { statusClass = 'on_hire'; statusLabel = 'Out on hire'; }
+    else if (inv.status === 'RETURNED') { statusClass = 'returned'; statusLabel = 'Returned'; }
+
+    return `
+      <tr class="clickable-row" onclick="openInvoiceDetailModal('${inv.invoiceNo}')">
+        <td><strong style="color: var(--red); font-family: 'Outfit', sans-serif; font-size: 14px;">${inv.invoiceNo}</strong></td>
+        <td>${inv.date}</td>
+        <td><strong>${inv.customerName}</strong></td>
+        <td class="td-address">${inv.address}</td>
+        <td><strong style="color: var(--text);">₦ ${inv.totalCost.toLocaleString('en-NG', {minimumFractionDigits:2})}</strong></td>
+        <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+        <td style="text-align: center;"><button class="btn btn-ghost" style="padding: 4px 8px; font-size: 11px;">View ➔</button></td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function filterAllInvoicesTable(query) {
+  const q = query.toLowerCase().trim();
+  const status = document.getElementById('invoiceStatusFilter').value;
+  let filtered = MASTER_INVOICES;
+
+  if (status !== 'ALL') {
+    filtered = filtered.filter(i => i.status === status);
+  }
+
+  if (q) {
+    filtered = filtered.filter(i => 
+      i.invoiceNo.toLowerCase().includes(q) ||
+      i.customerName.toLowerCase().includes(q) ||
+      i.address.toLowerCase().includes(q) ||
+      i.totalCost.toString().includes(q)
+    );
+  }
+
+  renderAllInvoicesTable(filtered);
+}
+
+function filterInvoiceByStatus(status) {
+  const q = document.getElementById('allInvoicesSearchInput').value;
+  filterAllInvoicesTable(q);
+}
+
+/* ── CLICKABLE CONFIRMATION INVOICE DETAIL MODAL ───────────────────────── */
+function openInvoiceDetailModal(invoiceNo) {
+  const inv = MASTER_INVOICES.find(i => i.invoiceNo === invoiceNo);
+  if (!inv) return;
+
+  activeSelectedInvoice = inv;
+  document.getElementById('modalInvoiceNo').textContent = `INVOICE ${inv.invoiceNo}`;
+  document.getElementById('modalInvoiceDate').textContent = `Issued: ${inv.date}`;
+  document.getElementById('modalCustomerName').textContent = inv.customerName;
+  document.getElementById('modalCustomerContact').textContent = `${inv.phone} · ${inv.email}`;
+  document.getElementById('modalCustomerAddress').textContent = inv.address;
+  document.getElementById('modalInvoiceStatusSelect').value = inv.status;
+
+  // Render items
+  const itemsBody = document.getElementById('modalInvoiceItemsBody');
+  itemsBody.innerHTML = inv.items.map(item => `
+    <tr>
+      <td><strong>${item.qty}</strong></td>
+      <td>${item.desc}</td>
+      <td>₦ ${item.price.toLocaleString()}</td>
+      <td><strong>₦ ${item.total.toLocaleString()}</strong></td>
+    </tr>
+  `).join('');
+
+  document.getElementById('modalSubtotal').textContent = '₦ ' + inv.subtotal.toLocaleString('en-NG', {minimumFractionDigits:2});
+  document.getElementById('modalCaution').textContent = '₦ ' + inv.caution.toLocaleString('en-NG', {minimumFractionDigits:2});
+  document.getElementById('modalTransport').textContent = '₦ ' + inv.transport.toLocaleString('en-NG', {minimumFractionDigits:2});
+  document.getElementById('modalGrandTotal').textContent = '₦ ' + inv.totalCost.toLocaleString('en-NG', {minimumFractionDigits:2});
+
+  document.getElementById('invoiceDetailModal').style.display = 'flex';
+}
+
+function closeInvoiceDetailModal() {
+  document.getElementById('invoiceDetailModal').style.display = 'none';
+}
+
+function updateInvoiceStatusFromModal(newStatus) {
+  if (!activeSelectedInvoice) return;
+  activeSelectedInvoice.status = newStatus;
+  renderAllInvoicesTable(MASTER_INVOICES);
+  showToast(`Updated ${activeSelectedInvoice.invoiceNo} status to ${newStatus}`, 'success');
 }
 
 /* ── ITEM ROW MANAGEMENT & AUTOCOMPLETE ────────────────────────────────── */
