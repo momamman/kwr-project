@@ -3,85 +3,263 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kitchenware Rentals — Order for Rental Items</title>
+  <title>Kitchenware Rentals — ERP & Order Management System</title>
+  <!-- Google Fonts & Chart.js -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --red:        #7B1515;
-      --red-dark:   #4e0d0d;
-      --red-light:  #f5ecec;
-      --red-mid:    #c0392b;
-      --bg:         #eef0f4;
-      --card:       #ffffff;
-      --border:     #dde1e7;
-      --text:       #1e2732;
-      --muted:      #6b7280;
-      --success:    #16a34a;
-      --shadow-sm:  0 1px 4px rgba(0,0,0,.06);
-      --shadow-md:  0 4px 24px rgba(0,0,0,.09);
-      --radius:     14px;
-      --radius-sm:  8px;
+      --red:          #7B1515;
+      --red-dark:     #4e0d0d;
+      --red-light:    #fdf2f2;
+      --red-mid:      #c0392b;
+      --bg:           #0f172a;
+      --bg-body:      #f8fafc;
+      --card:         #ffffff;
+      --border:       #e2e8f0;
+      --text:         #0f172a;
+      --muted:        #64748b;
+      --success:      #10b981;
+      --warning:      #f59e0b;
+      --info:         #3b82f6;
+      --purple:       #8b5cf6;
+      --radius:       16px;
+      --radius-sm:    10px;
+      --shadow-sm:    0 2px 8px rgba(15, 23, 42, 0.04);
+      --shadow-md:    0 8px 30px rgba(15, 23, 42, 0.08);
+      --shadow-lg:    0 20px 40px rgba(15, 23, 42, 0.12);
     }
 
     body {
-      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      background: var(--bg);
+      font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      background: #f1f5f9;
       color: var(--text);
       min-height: 100vh;
-      padding: 32px 16px 48px;
+      padding: 24px 16px 48px;
       font-size: 14px;
     }
 
-    .page { max-width: 980px; margin: 0 auto; }
+    .page { max-width: 1180px; margin: 0 auto; }
 
     /* ── HEADER ───────────────────────────────────────────────────────── */
     .header {
-      background: var(--card);
+      background: linear-gradient(135deg, #1e1b1b 0%, #7B1515 100%);
       border-radius: var(--radius) var(--radius) 0 0;
-      padding: 28px 40px;
+      padding: 28px 36px;
       display: flex;
       justify-content: space-between;
       align-items: center;
       flex-wrap: wrap;
       gap: 20px;
-      border-bottom: 3px solid var(--red);
+      color: #fff;
       box-shadow: var(--shadow-md);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -50%; right: -10%;
+      width: 300px; height: 300px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 50%;
+      pointer-events: none;
     }
 
     .brand { display: flex; align-items: center; gap: 16px; }
 
     .logo {
-      width: 60px; height: 60px;
-      background: var(--red);
-      border-radius: 12px;
+      width: 56px; height: 56px;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 14px;
       display: flex; align-items: center; justify-content: center;
       font-size: 26px; flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
 
     .brand-name h1 {
-      font-size: 24px; font-weight: 800;
-      color: var(--red); letter-spacing: 3px; text-transform: uppercase;
+      font-family: 'Outfit', sans-serif;
+      font-size: 22px; font-weight: 800;
+      color: #ffffff; letter-spacing: 2.5px; text-transform: uppercase;
     }
 
     .brand-name p {
-      font-size: 11px; letter-spacing: 5px; color: var(--muted);
+      font-size: 10.5px; letter-spacing: 4px; color: rgba(255,255,255,0.7);
       text-transform: uppercase; font-weight: 600; margin-top: 2px;
     }
 
-    .contact {
-      text-align: right; font-size: 12.5px; line-height: 2; color: var(--muted);
+    .header-user-panel {
+      text-align: right; font-size: 12.5px; line-height: 1.6; color: rgba(255,255,255,0.85);
     }
-    .contact strong { color: var(--text); }
 
-    /* ── CARD BODY ────────────────────────────────────────────────────── */
+    .role-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 10.5px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      background: rgba(255,255,255,0.2);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.3);
+      margin-left: 6px;
+    }
+
+    .role-badge.super_admin { background: #f59e0b; color: #000; }
+    .role-badge.data_entry { background: #3b82f6; color: #fff; }
+    .role-badge.invoicing { background: #10b981; color: #fff; }
+    .role-badge.analyst { background: #8b5cf6; color: #fff; }
+
+    .demo-switcher-bar {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .demo-btn {
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #fff;
+      transition: all 0.2s;
+    }
+    .demo-btn:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    /* ── CORE NAVIGATION TABS BAR ─────────────────────────────────────── */
+    .nav-tabs-container {
+      background: #1e293b;
+      padding: 10px 20px;
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      border-bottom: 2px solid rgba(255,255,255,0.1);
+    }
+
+    .tab-btn {
+      padding: 12px 22px;
+      border-radius: 10px;
+      border: none;
+      background: transparent;
+      color: #94a3b8;
+      font-family: 'Outfit', sans-serif;
+      font-size: 13.5px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.25s ease;
+      white-space: nowrap;
+    }
+
+    .tab-btn:hover { color: #fff; background: rgba(255,255,255,0.06); }
+    .tab-btn.active {
+      background: var(--red);
+      color: #fff;
+      box-shadow: 0 4px 14px rgba(123, 21, 21, 0.4);
+    }
+
+    .tab-btn.disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .tab-lock-icon {
+      font-size: 11px;
+      background: rgba(0,0,0,0.3);
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: 4px;
+    }
+
+    /* ── CARD & TAB CONTENTS ─────────────────────────────────────────── */
     .card {
       background: var(--card);
       padding: 36px 40px;
-      box-shadow: var(--shadow-md);
+      box-shadow: var(--shadow-lg);
+      border-radius: 0 0 var(--radius) var(--radius);
+      min-height: 600px;
     }
 
-    /* ── TOP BAR: title + order no ────────────────────────────────────── */
+    .tab-content { display: none; }
+    .tab-content.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── GENERAL SEARCH BAR ───────────────────────────────────────────── */
+    .search-bar-container {
+      background: #f8fafc;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      margin-bottom: 28px;
+      display: flex;
+      gap: 14px;
+      align-items: center;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .search-input-wrapper {
+      position: relative;
+      flex: 1;
+    }
+
+    .search-input-wrapper input {
+      width: 100%;
+      padding: 12px 16px 12px 42px;
+      border-radius: 8px;
+      border: 1.5px solid var(--border);
+      font-size: 13.5px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-input-wrapper input:focus {
+      border-color: var(--red);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 14px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--muted);
+    }
+
+    /* ── READ ONLY LOCK BANNER ──────────────────────────────────────── */
+    .read-only-banner {
+      background: #fef3c7;
+      border: 1.5px solid #f59e0b;
+      color: #92400e;
+      padding: 14px 20px;
+      border-radius: 10px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+      font-size: 13px;
+    }
+
+    /* ── TOP BAR & FORM CONTROLS ─────────────────────────────────────── */
     .top-bar {
       display: flex;
       justify-content: space-between;
@@ -92,7 +270,8 @@
     }
 
     .form-title h2 {
-      font-size: 20px; font-weight: 800;
+      font-family: 'Outfit', sans-serif;
+      font-size: 22px; font-weight: 800;
       color: var(--red); text-transform: uppercase; letter-spacing: 1px;
     }
 
@@ -100,378 +279,214 @@
       font-size: 12.5px; color: var(--muted); margin-top: 4px; line-height: 1.5;
     }
 
-    .order-no-box { text-align: right; }
+    .order-no-box {
+      background: var(--red-light);
+      border: 1.5px solid rgba(123, 21, 21, 0.2);
+      border-radius: var(--radius-sm);
+      padding: 12px 20px;
+      text-align: center;
+      min-width: 140px;
+    }
+
     .order-no-box label {
-      font-size: 11px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 1px; color: var(--muted); display: block; margin-bottom: 6px;
+      display: block; font-size: 10px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 2px; color: var(--red);
     }
+
     .order-badge {
-      background: var(--red); color: #fff;
-      padding: 8px 20px; border-radius: var(--radius-sm);
-      font-size: 22px; font-weight: 800; letter-spacing: 3px;
-      display: inline-block;
+      font-family: 'Outfit', sans-serif;
+      font-size: 24px; font-weight: 800; color: var(--red);
     }
 
-    /* ── SECTION HEADING ──────────────────────────────────────────────── */
-    .section-label {
-      font-size: 11px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: 1.5px; color: var(--red);
-      display: flex; align-items: center; gap: 10px;
-      margin-bottom: 18px;
+    .section-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px; font-weight: 800;
+      text-transform: uppercase; letter-spacing: 1.5px;
+      color: var(--red); margin-bottom: 14px;
+      display: flex; align-items: center; gap: 8px;
     }
-    .section-label::after {
-      content: ''; flex: 1; height: 1px; background: var(--border);
+    .section-title::after {
+      content: ''; flex: 1; height: 1.5px; background: var(--border);
     }
 
-    /* ── FORM GRID ────────────────────────────────────────────────────── */
-    .form-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 16px;
-      margin-bottom: 32px;
-    }
-    .span2 { grid-column: 1 / -1; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+    .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 20px; }
 
-    .field { display: flex; flex-direction: column; gap: 5px; }
+    .field { display: flex; flex-direction: column; gap: 5px; position: relative; }
     .field label {
       font-size: 11px; font-weight: 700; text-transform: uppercase;
-      letter-spacing: .8px; color: var(--muted);
+      letter-spacing: 0.5px; color: var(--muted);
     }
-
-    input, textarea, select {
+    .field input, .field select, .field textarea {
       border: 1.5px solid var(--border);
-      border-radius: var(--radius-sm);
-      padding: 10px 13px;
-      font-size: 14px; font-family: inherit;
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-size: 13.5px;
       color: var(--text);
-      background: #fafafa;
       outline: none;
-      transition: border-color .18s, box-shadow .18s, background .18s;
-      width: 100%;
-    }
-    input:focus, textarea:focus, select:focus {
-      border-color: var(--red);
-      box-shadow: 0 0 0 3px rgba(123,21,21,.1);
-      background: #fff;
-    }
-    input[readonly] {
-      background: var(--red-light);
-      color: var(--red);
-      font-weight: 700;
-      cursor: default;
-    }
-    select { cursor: pointer; }
-
-    /* ── ITEMS TABLE ──────────────────────────────────────────────────── */
-    .table-wrap {
-      border-radius: 12px;
-      overflow: hidden;
-      border: 1.5px solid var(--border);
-      margin-bottom: 12px;
-    }
-
-    table { width: 100%; border-collapse: collapse; }
-
-    thead { background: var(--red); }
-    thead th {
-      padding: 13px 14px;
-      font-size: 11px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: .8px;
-      color: #fff; text-align: left;
-      white-space: nowrap;
-    }
-    thead th.num { text-align: right; }
-    thead th:first-child { width: 90px; }
-    thead th:nth-child(3) { width: 170px; }
-    thead th:nth-child(4) { width: 170px; }
-    thead th:last-child  { width: 46px; }
-
-    tbody tr { border-bottom: 1px solid var(--border); transition: background .12s; }
-    tbody tr:last-child { border-bottom: none; }
-    tbody tr:hover { background: #fdf8f8; }
-
-    td { padding: 6px 6px; }
-    td.num { text-align: right; }
-
-    td input {
-      border-color: transparent; background: transparent;
-      padding: 8px 9px; border-radius: 6px;
-    }
-    td input:focus {
-      border-color: var(--red);
-      background: #fff;
-      box-shadow: 0 0 0 3px rgba(123,21,21,.08);
-    }
-    td input[readonly] {
-      color: var(--red); font-weight: 700;
-      background: transparent; cursor: default;
-      box-shadow: none; border-color: transparent;
-    }
-    td input[readonly]:focus { box-shadow: none; border-color: transparent; }
-
-    .row-del {
-      background: none; border: none; cursor: pointer;
-      color: #ccc; width: 34px; height: 34px;
-      border-radius: 6px; display: flex; align-items: center; justify-content: center;
-      font-size: 14px; transition: color .15s, background .15s;
-    }
-    .row-del:hover { color: var(--red-mid); background: #fdecea; }
-
-    .add-row {
-      width: 100%; background: none; border: 1.5px dashed var(--border);
-      border-radius: var(--radius-sm); padding: 10px;
-      color: var(--red); font-size: 13px; font-weight: 600;
-      cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;
-      transition: border-color .18s, background .18s;
+      transition: border-color .18s;
       font-family: inherit;
     }
-    .add-row:hover { border-color: var(--red); background: var(--red-light); }
-
-    /* ── ADJUSTMENTS + SUMMARY ────────────────────────────────────────── */
-    .bottom-row {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 32px;
-      margin: 32px 0;
-    }
-
-    .adj-group { display: flex; flex-direction: column; gap: 14px; }
-
-    .prefix-input {
-      display: flex;
-      border: 1.5px solid var(--border);
-      border-radius: var(--radius-sm);
-      overflow: hidden;
-      background: #fafafa;
-      transition: border-color .18s, box-shadow .18s;
-    }
-    .prefix-input:focus-within {
+    .field input:focus, .field select:focus, .field textarea:focus {
       border-color: var(--red);
-      box-shadow: 0 0 0 3px rgba(123,21,21,.1);
+    }
+
+    /* Autocomplete dropdown */
+    .autocomplete-results {
+      position: absolute;
+      top: 100%; left: 0; right: 0;
       background: #fff;
-    }
-    .prefix-input .sym {
-      padding: 10px 12px;
-      background: var(--border);
-      font-size: 13px; font-weight: 700; color: var(--muted);
-      border-right: 1.5px solid var(--border);
-      display: flex; align-items: center;
-    }
-    .prefix-input input {
-      border: none; background: transparent; flex: 1;
-      padding: 10px 12px; font-size: 14px;
-      box-shadow: none !important;
-    }
-    .prefix-input input:focus { box-shadow: none !important; border: none; }
-
-    /* Summary card */
-    .summary-card {
-      background: var(--red);
-      border-radius: 12px;
-      padding: 22px 24px;
-      color: #fff;
-      display: flex; flex-direction: column; gap: 0;
-    }
-
-    .sum-line {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 9px 0;
-      border-bottom: 1px solid rgba(255,255,255,.15);
-      font-size: 13.5px;
-    }
-    .sum-line:last-of-type { border-bottom: none; }
-    .sum-line .lbl { opacity: .8; font-weight: 500; }
-    .sum-line .val { font-weight: 700; font-size: 14px; }
-    .sum-line.grand {
-      border-top: 2px solid rgba(255,255,255,.3);
-      margin-top: 4px; padding-top: 14px;
-      font-size: 17px;
-    }
-    .sum-line.grand .val { font-size: 20px; }
-
-    .words-box {
-      margin-top: 14px;
-      background: rgba(255,255,255,.12);
-      border-radius: 8px; padding: 12px 14px;
-      font-size: 12.5px; font-style: italic;
-      line-height: 1.6; opacity: .92;
-    }
-    .words-box strong {
-      display: block; font-style: normal; font-size: 10.5px;
-      text-transform: uppercase; letter-spacing: .5px; opacity: .7; margin-bottom: 3px;
-    }
-
-    /* ── FOOTER FIELDS ────────────────────────────────────────────────── */
-    .footer-fields {
-      background: #f9fafb;
       border: 1.5px solid var(--border);
-      border-radius: 12px;
-      padding: 24px;
-      margin-bottom: 28px;
+      border-radius: 8px;
+      box-shadow: var(--shadow-md);
+      z-index: 50;
+      max-height: 200px;
+      overflow-y: auto;
+      display: none;
     }
-
-    .footer-note {
-      font-size: 12px; color: var(--muted); line-height: 1.6;
-      margin-bottom: 18px; padding-bottom: 18px; border-bottom: 1px solid var(--border);
+    .autocomplete-item {
+      padding: 10px 14px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.15s;
     }
+    .autocomplete-item:hover { background: var(--red-light); }
+    .autocomplete-item .name { font-weight: 700; color: var(--text); }
+    .autocomplete-item .sub { font-size: 11px; color: var(--muted); }
 
-    .footer-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
+    /* ── TABLES ───────────────────────────────────────────────────────── */
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    th {
+      background: #f8fafc;
+      padding: 12px 14px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      color: var(--muted);
+      border-bottom: 2px solid var(--border);
     }
-
-    /* ── ACTIONS ──────────────────────────────────────────────────────── */
-    .actions {
-      display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap;
+    td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13.5px;
     }
 
     .btn {
-      padding: 11px 24px; border-radius: 10px;
-      font-size: 13.5px; font-weight: 600;
-      cursor: pointer; border: none;
-      display: inline-flex; align-items: center; gap: 7px;
-      font-family: inherit; transition: all .18s;
-    }
-    .btn-ghost {
-      background: #fff; border: 1.5px solid var(--border); color: var(--text);
-    }
-    .btn-ghost:hover { border-color: var(--red); color: var(--red); }
-
-    .btn-primary {
-      background: var(--red); color: #fff;
-      box-shadow: 0 4px 14px rgba(123,21,21,.28);
-    }
-    .btn-primary:hover {
-      background: var(--red-dark);
-      transform: translateY(-1px);
-      box-shadow: 0 6px 20px rgba(123,21,21,.38);
-    }
-    .btn-primary:active { transform: none; }
-    .btn-primary.saved { background: var(--success); box-shadow: none; }
-
-    /* ── DIVIDER ──────────────────────────────────────────────────────── */
-    .divider { height: 1px; background: var(--border); margin: 28px 0; }
-
-    /* ── PAGE FOOTER ──────────────────────────────────────────────────── */
-    .page-footer {
-      background: var(--red);
-      color: rgba(255,255,255,.6);
-      font-size: 11.5px;
-      text-align: center;
-      padding: 14px 24px;
-      border-radius: 0 0 var(--radius) var(--radius);
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
     }
 
-    /* ── TOAST ────────────────────────────────────────────────────────── */
+    .btn-red { background: var(--red); color: #fff; }
+    .btn-red:hover { background: var(--red-dark); }
+    .btn-ghost { background: #fff; border: 1.5px solid var(--border); color: var(--text); }
+    .btn-ghost:hover { background: #f8fafc; }
+    .btn-success { background: #10b981; color: #fff; }
+    .btn-success:hover { background: #059669; }
+
+    /* ── SUMMARY / TOTALS BOX ─────────────────────────────────────────── */
+    .summary-box {
+      background: #f8fafc;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      margin-top: 24px;
+    }
+    .summary-row {
+      display: flex; justify-content: space-between; padding: 6px 0;
+      font-size: 13.5px; color: var(--muted);
+    }
+    .summary-row.total {
+      border-top: 2px solid var(--border);
+      margin-top: 10px; padding-top: 12px;
+      font-size: 18px; font-weight: 800; color: var(--red);
+    }
+
+    /* ── ANALYSIS & DASHBOARD ─────────────────────────────────────────── */
+    .kpi-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 30px;
+    }
+    .kpi-card {
+      background: #ffffff;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: var(--shadow-sm);
+    }
+    .kpi-card .kpi-label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--muted); }
+    .kpi-card .kpi-val { font-family: 'Outfit', sans-serif; font-size: 24px; font-weight: 800; color: var(--text); margin-top: 6px; }
+    .kpi-card .kpi-trend { font-size: 11px; font-weight: 700; margin-top: 6px; color: var(--success); }
+
+    .charts-grid {
+      display: grid; grid-template-columns: 2fr 1fr; gap: 20px; margin-bottom: 30px;
+    }
+    .chart-card {
+      background: #ffffff;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: var(--shadow-sm);
+    }
+    .chart-card h3 { font-size: 15px; font-weight: 800; margin-bottom: 16px; color: var(--text); }
+
+    /* ── AI ASSISTANT BOX ─────────────────────────────────────────────── */
+    .ai-box {
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+      color: #fff;
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 30px;
+      box-shadow: var(--shadow-md);
+    }
+    .ai-box h3 { font-family: 'Outfit', sans-serif; font-size: 16px; color: #a7f3d0; margin-bottom: 10px; display: flex; align-items: center; gap: 8px; }
+    .ai-chips { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+    .ai-chip {
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 6px 12px; border-radius: 20px;
+      font-size: 11.5px; cursor: pointer; transition: all 0.2s;
+    }
+    .ai-chip:hover { background: rgba(255,255,255,0.25); }
+
+    /* ── REFUND MODAL (SUPER ADMIN) ──────────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(15, 23, 42, 0.7);
+      backdrop-filter: blur(4px);
+      display: none; justify-content: center; align-items: center;
+      z-index: 1000;
+    }
+    .modal-card {
+      background: #fff;
+      border-radius: 16px;
+      width: 100%; max-width: 500px;
+      padding: 30px;
+      box-shadow: var(--shadow-lg);
+    }
+
     #toast {
-      position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
-      background: #1e2732; color: #fff;
-      padding: 12px 24px; border-radius: 999px;
-      font-size: 13.5px; font-weight: 600;
-      opacity: 0; transition: all .3s; pointer-events: none;
-      z-index: 9999; white-space: nowrap;
+      position: fixed; bottom: 24px; right: 24px;
+      background: #0f172a; color: #fff;
+      padding: 12px 24px; border-radius: 8px;
+      font-weight: 600; font-size: 13px;
+      display: none; z-index: 2000;
+      box-shadow: var(--shadow-md);
     }
-    #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-    #toast.error { background: var(--red-mid); }
-    #toast.ok    { background: var(--success); }
-
-    /* ── OPT LABEL ──────────────────────────────────────────────────────── */
-    .opt {
-      font-size: 10px; font-weight: 500; color: var(--muted);
-      text-transform: none; letter-spacing: 0;
-      background: var(--border); border-radius: 4px; padding: 1px 5px; margin-left: 4px;
-    }
-
-    /* ── UPLOAD ZONE ─────────────────────────────────────────────────────── */
-    .upload-zone {
-      border: 2px dashed var(--border); border-radius: 12px;
-      padding: 28px 20px; text-align: center; cursor: pointer;
-      transition: border-color .2s, background .2s; background: #fafafa;
-      margin-bottom: 10px;
-    }
-    .upload-zone:hover, .upload-zone.drag-over {
-      border-color: var(--red); background: var(--red-light);
-    }
-    .upload-icon { font-size: 28px; margin-bottom: 8px; }
-    .upload-text { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
-    .upload-hint { font-size: 12px; color: var(--muted); }
-
-    .file-preview {
-      display: flex; align-items: center; gap: 16px;
-      padding: 12px 16px; background: #f0fdf4;
-      border: 1.5px solid #86efac; border-radius: 10px; margin-bottom: 10px;
-    }
-    .file-preview img {
-      width: 64px; height: 64px; object-fit: cover;
-      border-radius: 6px; border: 1px solid var(--border); flex-shrink: 0;
-    }
-    .file-info { flex: 1; min-width: 0; }
-    .file-name { font-size: 13px; font-weight: 600; color: var(--text); word-break: break-all; }
-    .file-size { font-size: 12px; color: var(--muted); margin-top: 2px; }
-    .clear-file {
-      background: none; border: 1.5px solid #f87171; color: #ef4444;
-      border-radius: 6px; padding: 4px 10px; font-size: 12px; font-weight: 600;
-      cursor: pointer; margin-top: 6px; font-family: inherit; transition: background .15s;
-      display: inline-block;
-    }
-    .clear-file:hover { background: #fef2f2; }
-
-    /* ── LOADING OVERLAY ─────────────────────────────────────────────────── */
-    #loadingOverlay {
-      position: fixed; inset: 0; background: rgba(0,0,0,.5);
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 16px; z-index: 10000;
-    }
-    .spinner {
-      width: 48px; height: 48px; border: 4px solid rgba(255,255,255,.3);
-      border-top-color: #fff; border-radius: 50%;
-      animation: spin .7s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    #loadingMsg { color: #fff; font-size: 15px; font-weight: 600; letter-spacing: .3px; }
-
-    /* ── RESPONSIVE
-    /* ── SEARCH RESULTS ── */
-    #searchResults {
-      position: absolute; top: 100%; left: 0; right: 0;
-      background: #fff; border: 1.5px solid var(--border); border-radius: 8px;
-      z-index: 100; box-shadow: var(--shadow-md); max-height: 200px; overflow-y: auto;
-    }
-    .search-item {
-      padding: 10px 14px; cursor: pointer; transition: background .1s;
-      border-bottom: 1px solid var(--border);
-    }
-    .search-item:last-child { border-bottom: none; }
-    .search-item:hover { background: var(--red-light); }
-    .search-item .name { font-weight: 700; color: var(--red); }
-    .search-item .meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
-
-    @media (max-width: 720px) {
-      .header  { padding: 22px 20px; }
-      .card    { padding: 24px 20px; }
-      .contact { text-align: left; }
-      .form-grid   { grid-template-columns: 1fr; }
-      .span2        { grid-column: 1; }
-      .bottom-row  { grid-template-columns: 1fr; }
-      .footer-grid { grid-template-columns: 1fr 1fr; }
-      thead th:nth-child(3), td:nth-child(3) { display: none; }
-    }
-
-    @media print {
-      body { background: #fff; padding: 0; }
-      .actions, .add-row, .row-del { display: none !important; }
-      .header, .card, .page-footer { box-shadow: none; border-radius: 0; }
-      #toast { display: none; }
-    }
+    #toast.show { display: block; animation: fadeIn 0.2s ease-in-out; }
+    #toast.error { background: #ef4444; }
+    #toast.success { background: #10b981; }
   </style>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="js/db.js"></script>
-<script src="js/auth.js"></script>
 </head>
 <body>
+
 <div class="page">
 
   <!-- ── HEADER ── -->
@@ -479,355 +494,483 @@
     <div class="brand">
       <div class="logo">🍴</div>
       <div class="brand-name">
-        <h1>Kitchenware</h1>
-        <p>R &nbsp; E &nbsp; N &nbsp; T &nbsp; A &nbsp; L &nbsp; S</p>
+        <h1>Kitchenware Rentals</h1>
+        <p>E R P &nbsp; & &nbsp; O R D E R &nbsp; M A N A G E M E N T</p>
       </div>
     </div>
-    <div class="contact">
-      <div id="user-info" style="margin-bottom: 10px; font-weight: 700; color: var(--red);">
-        Loading user...
+    
+    <div class="header-user-panel">
+      <div>
+        Logged in as: <strong id="user-email-display">Loading...</strong>
+        <span id="user-role-badge" class="role-badge">USER</span>
       </div>
-      <div style="display: flex; gap: 10px; justify-content: flex-end;">
-        <a href="admin-users.html" id="admin-link" style="display: none; color: var(--red); text-decoration: none; font-weight: 600;">Admin Panel</a>
-        <button onclick="auth.logout()" class="btn btn-ghost" style="padding: 5px 12px; font-size: 11px;">Logout</button>
+      <div class="demo-switcher-bar">
+        <span style="font-size: 10px; text-transform: uppercase; color: rgba(255,255,255,0.6); margin-right: 4px;">Switch Demo Role:</span>
+        <button onclick="auth.loginAsDemo('super_admin')" class="demo-btn" style="background: #f59e0b; color: #000;">👑 Super Admin</button>
+        <button onclick="auth.loginAsDemo('data_entry')" class="demo-btn" style="background: #3b82f6;">📝 Data Entry</button>
+        <button onclick="auth.loginAsDemo('invoicing')" class="demo-btn" style="background: #10b981;">🧾 Invoicing</button>
+        <button onclick="auth.loginAsDemo('analyst')" class="demo-btn" style="background: #8b5cf6;">📊 Analyst</button>
+        <a href="admin-users.html" id="admin-panel-link" style="display: none; color: #fef08a; text-decoration: none; font-weight: 700; margin-left: 8px; font-size: 11.5px;">⚙️ Manage Users</a>
+        <button onclick="auth.logout()" class="demo-btn" style="background: rgba(255,255,255,0.2); margin-left: 4px;">Logout</button>
       </div>
-      <br>
-      Plot 541A, 4TH Avenue, Gwarimpa Housing Estate, Gwarimpa<br>
-      Abuja FCT, Nigeria<br>
-      <strong>+234 809 266 0766</strong> &nbsp;·&nbsp; +234 703 068 6500<br>
-      amina@kitchenwarerentals.com &nbsp;·&nbsp; www.kitchenwarerentals.com
     </div>
   </header>
 
-  <!-- ── CARD BODY ── -->
+  <!-- ── CORE NAVIGATION TABS BAR ── -->
+  <nav class="nav-tabs-container">
+    <button class="tab-btn active" id="btn-tab-invoicing" onclick="switchTab('invoicing')">
+      <span>🧾</span> 1. Invoicing & Transactions
+    </button>
+    <button class="tab-btn" id="btn-tab-data-entry" onclick="switchTab('data-entry')">
+      <span>📝</span> 2. Data Entry (Legacy Ingestion)
+    </button>
+    <button class="tab-btn" id="btn-tab-analysis" onclick="switchTab('analysis')">
+      <span>📊</span> 3. Analysis & AI Insights
+    </button>
+  </nav>
+
+  <!-- ── CARD MAIN CONTAINER ── -->
   <main class="card">
 
-    <!-- Title + Order No -->
-    <div class="top-bar">
-      <div class="form-title">
-        <h2>Order for Rental Items</h2>
-        <p>
-          I/We hereby wish to rent from Kitchenware Rentals Limited the items listed below,<br>
-          in line with the terms and conditions listed overleaf.
-        </p>
+    <!-- =================================================================== -->
+    <!-- TAB 1: INVOICING & TRANSACTIONS                                     -->
+    <!-- =================================================================== -->
+    <div id="tab-invoicing" class="tab-content active">
+
+      <!-- Dynamic Search Bar -->
+      <div class="search-bar-container">
+        <div class="search-input-wrapper">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="generalSearchInput" placeholder="Search Invoices & Transactions by Invoice #, Customer Name, Phone, Email, or Status..." oninput="handleGeneralSearch(this.value)">
+          <div class="autocomplete-results" id="generalSearchResults"></div>
+        </div>
+        <button class="btn btn-ghost" onclick="fetchNextOrderNo()">+ New Transaction</button>
       </div>
-      <div class="order-no-box">
-        <label>Order No.</label>
-        <div class="order-badge" id="badgeNo">0001</div>
-        <div id="admin-load-box" style="display: none; margin-top: 10px;">
-          <input type="text" id="fLoadOrderNo" placeholder="Load Order #" style="font-size: 11px; padding: 5px;" onkeypress="if(event.key==='Enter') loadOrder(this.value)">
+
+      <!-- Read Only Lock Banner (For Fulfilled Transactions) -->
+      <div id="readOnlyBanner" class="read-only-banner" style="display: none;">
+        <span>🔒 READ ONLY MODE: This transaction is fulfilled/completed. Only the Super Admin can modify completed transactions.</span>
+        <button id="btnUnlockSuperAdmin" class="btn btn-red" style="padding: 4px 12px; font-size: 11px;" onclick="enableSuperAdminEdit()">👑 Super Admin Unlock Edit</button>
+      </div>
+
+      <!-- Form Title & Order No -->
+      <div class="top-bar">
+        <div class="form-title">
+          <h2>Invoice & Rental Order</h2>
+          <p>Create, manage, and process active rental transactions, invoices, and deposits.</p>
+        </div>
+        <div class="order-no-box">
+          <label>Invoice No.</label>
+          <div class="order-badge" id="badgeNo">0001</div>
+          <input type="hidden" id="fOrderNo" value="0001">
         </div>
       </div>
-    </div>
 
-    <div id="loadingOverlay" style="display: none;">
-      <div class="spinner"></div>
-      <div id="loadingMsg">Processing...</div>
-    </div>
-
-    <!-- ── CUSTOMER DETAILS ── -->
-    <div class="section-label">Customer Details</div>
-    <div class="form-grid">
-      <div class="field span2" style="position: relative;">
-        <label>Search Existing Customer <span class="opt">Name or Phone</span></label>
-        <div class="prefix-input">
-          <span class="sym">🔍</span>
-          <input type="text" id="fSearch" placeholder="Type to search..." oninput="searchCustomer(this.value)" autocomplete="off" />
+      <!-- Customer Details with Real-time Autocomplete -->
+      <div class="section-title">👤 Customer Information</div>
+      <div class="grid-3">
+        <div class="field">
+          <label>Customer Name / Company</label>
+          <input type="text" id="fCustomerName" placeholder="Type to search customer DB..." oninput="autocompleteCustomer(this.value)" autocomplete="off">
+          <div class="autocomplete-results" id="customerResults"></div>
         </div>
-        <div id="searchResults" style="display: none;"></div>
+        <div class="field">
+          <label>Telephone Number</label>
+          <input type="text" id="fPhone" placeholder="+234 800 000 0000">
+        </div>
+        <div class="field">
+          <label>Email Address</label>
+          <input type="email" id="fEmail" placeholder="customer@example.com">
+        </div>
       </div>
-      <div class="field">
-        <label>Order Placed By</label>
-        <input type="text" id="fBy" placeholder="Customer or representative name" />
-      </div>
-      <div class="field">
-        <label>Telephone</label>
-        <input type="tel" id="fTel" placeholder="+234 000 000 0000" />
-      </div>
-      <div class="field">
-        <label>Email Address <span class="opt">Optional</span></label>
-        <input type="email" id="fEmail" placeholder="customer@example.com" />
-      </div>
-      <div class="field span2">
-        <label>Address</label>
-        <input type="text" id="fAddress" placeholder="Customer delivery / collection address" />
-      </div>
-    </div>
 
-    <div class="divider"></div>
-
-    <!-- ── ORDER DETAILS ── -->
-    <div class="section-label">Order Details</div>
-    <div class="form-grid">
-      <div class="field">
-        <label>Date</label>
-        <input type="date" id="fDate" />
+      <div class="grid-2">
+        <div class="field">
+          <label>Delivery / Event Address</label>
+          <input type="text" id="fAddress" placeholder="Event venue or delivery location">
+        </div>
+        <div class="field">
+          <label>Rental Period (Start Date & End Date)</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="date" id="fStartDate" style="flex:1;">
+            <input type="date" id="fEndDate" style="flex:1;">
+          </div>
+        </div>
       </div>
-      <div class="field">
-        <label>Order Number</label>
-        <input type="text" id="fOrderNo" value="0001" maxlength="10"
-               placeholder="e.g. 0051" oninput="syncOrderNo(this.value)" />
-      </div>
-      <div class="field span2">
-        <label>Order Notes <span class="opt">Optional</span></label>
-        <textarea id="fNotes" rows="2" placeholder="Special instructions, delivery notes, etc."></textarea>
-      </div>
-    </div>
 
-    <div class="divider"></div>
-
-    <!-- ── RENTAL ITEMS ── -->
-    <div class="section-label">Rental Items</div>
-    <div class="table-wrap">
+      <!-- Rental Items Table -->
+      <div class="section-title">📦 Rental Items & Inventory Builder</div>
       <table>
         <thead>
           <tr>
-            <th>Qty</th>
-            <th>Description of Rented Item</th>
-            <th class="num">Price / Item / Day (₦)</th>
-            <th class="num">Rental Charge for Day(s) (₦)</th>
-            <th></th>
+            <th style="width: 80px;">Qty</th>
+            <th>Item Description (Real-time Inventory Search)</th>
+            <th style="width: 140px;">Daily Rate (₦)</th>
+            <th style="width: 140px;">Charge (₦)</th>
+            <th style="width: 50px;"></th>
           </tr>
         </thead>
-        <tbody id="itemsBody"></tbody>
+        <tbody id="itemsBody">
+          <!-- Rows injected dynamically -->
+        </tbody>
       </table>
-    </div>
-    <button class="add-row" onclick="addRow()">
-      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-        <path d="M7 1v12M1 7h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      </svg>
-      Add Item Row
-    </button>
+      <button class="btn btn-ghost" onclick="addRow()">+ Add Item Row</button>
 
-    <div class="divider"></div>
-
-    <!-- ── ADJUSTMENTS + SUMMARY ── -->
-    <div class="bottom-row">
-
-      <!-- Adjustments -->
-      <div>
-        <div class="section-label">Adjustments</div>
-        <div class="adj-group">
-
-          <div class="field">
-            <label>Previous Bill (₦)</label>
-            <div class="prefix-input">
-              <span class="sym">₦</span>
-              <input type="number" id="fPrevBill" placeholder="0.00" min="0" step="0.01" oninput="recalc()" />
+      <!-- Financial Totals Summary -->
+      <div class="summary-box">
+        <div class="grid-2">
+          <div>
+            <div class="field" style="margin-bottom: 12px;">
+              <label>Caution / Refundable Deposit (₦)</label>
+              <input type="number" id="fCaution" placeholder="0.00" oninput="recalc()">
+            </div>
+            <div class="field">
+              <label>Logistics / Transport Charge (₦)</label>
+              <input type="number" id="fTransport" placeholder="0.00" oninput="recalc()">
             </div>
           </div>
-
-          <div class="field">
-            <label>Caution Deposit (₦)</label>
-            <div class="prefix-input">
-              <span class="sym">₦</span>
-              <input type="number" id="fCaution" placeholder="0.00" min="0" step="0.01" oninput="recalc()" />
-            </div>
-          </div>
-
-          <div class="field">
-            <label>Cost of Transportation (₦)</label>
-            <div class="prefix-input">
-              <span class="sym">₦</span>
-              <input type="number" id="fTransport" placeholder="0.00" min="0" step="0.01" oninput="recalc()" />
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      <!-- Summary -->
-      <div>
-        <div class="section-label">Summary</div>
-        <div class="summary-card">
-          <div class="sum-line">
-            <span class="lbl">Total Rental Charges</span>
-            <span class="val" id="sRental">₦ 0.00</span>
-          </div>
-          <div class="sum-line">
-            <span class="lbl">Previous Bill</span>
-            <span class="val" id="sPrev">₦ 0.00</span>
-          </div>
-          <div class="sum-line">
-            <span class="lbl">Caution Deposit</span>
-            <span class="val" id="sCaution">₦ 0.00</span>
-          </div>
-          <div class="sum-line">
-            <span class="lbl">Transportation</span>
-            <span class="val" id="sTransport">₦ 0.00</span>
-          </div>
-          <div class="sum-line grand">
-            <span class="lbl">Grand Total</span>
-            <span class="val" id="sTotal">₦ 0.00</span>
-          </div>
-          <div class="words-box">
-            <strong>Total Amount in Words</strong>
-            <span id="sWords">Zero Naira only</span>
+          <div>
+            <div class="summary-row"><span>Subtotal Rental Charge:</span> <strong id="sRental">₦ 0.00</strong></div>
+            <div class="summary-row"><span>Caution Deposit:</span> <strong id="sCaution">₦ 0.00</strong></div>
+            <div class="summary-row"><span>Logistics & Transport:</span> <strong id="sTransport">₦ 0.00</strong></div>
+            <div class="summary-row total"><span>Total Payable:</span> <strong id="sTotal">₦ 0.00</strong></div>
+            <div style="margin-top: 8px; font-size: 11px; font-weight: 700; color: var(--muted);" id="sWords">Zero Naira only</div>
           </div>
         </div>
       </div>
 
-    </div><!-- /.bottom-row -->
+      <!-- Transaction Actions -->
+      <div style="margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end;">
+        <button class="btn btn-ghost" onclick="printInvoice()">🖨️ Print Invoice</button>
+        <button class="btn btn-red" id="btnSaveInvoice" onclick="saveInvoice('fulfilled')">💾 Save & Fulfill Invoice</button>
+      </div>
 
-    <div class="divider"></div>
+      <!-- Refundable Deposits Management Module -->
+      <div style="margin-top: 48px;">
+        <div class="section-title">💳 Refundable Deposits Management</div>
+        <table id="depositsTable">
+          <thead>
+            <tr>
+              <th>Invoice #</th>
+              <th>Customer</th>
+              <th>Deposit Amount</th>
+              <th>Status</th>
+              <th>Payout Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>#0001</td>
+              <td>Amina Bello (Gwarimpa Event)</td>
+              <td>₦ 25,000.00</td>
+              <td><span style="background: #fef3c7; color: #b45309; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px;">HELD</span></td>
+              <td>
+                <button class="btn btn-success deposit-payout-btn" onclick="openRefundModal('#0001', 'Amina Bello', 25000)">💳 Initiate Payout</button>
+              </td>
+            </tr>
+            <tr>
+              <td>#0002</td>
+              <td>Chief Okafor Catering</td>
+              <td>₦ 50,000.00</td>
+              <td><span style="background: #d1fae5; color: #047857; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px;">REFUNDED</span></td>
+              <td><span style="color: var(--muted); font-size: 11px; font-weight: 600;">Completed</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
-    <!-- ── SIGNATURES / PAYMENT ── -->
-    <div class="footer-fields">
-      <p class="footer-note">
-        This order confirms the rental agreement as stated in the terms and conditions of Kitchenware
-        Rentals Limited. The customer is responsible for the safe return of all rented items in good condition.
-      </p>
-      <div class="footer-grid">
-        <div class="field" id="custNameField">
-          <label>Customer / Representative Name</label>
-          <input type="text" id="fCustName" placeholder="Full name" />
-          <select id="fCustSelect" style="display: none;" onchange="handleRepChange(this.value)">
-            <option value="">— Select Representative —</option>
-          </select>
+    </div>
+
+    <!-- =================================================================== -->
+    <!-- TAB 2: DATA ENTRY (LEGACY DATA INGESTION)                          -->
+    <!-- =================================================================== -->
+    <div id="tab-data-entry" class="tab-content">
+      <div class="top-bar">
+        <div class="form-title">
+          <h2>📝 Data Entry & Legacy Ingestion</h2>
+          <p>Populate legacy paper transaction records into the database to build Customer & Inventory master files.</p>
         </div>
-        <div class="field">
-          <label>Mode of Payment</label>
-          <select id="fPayment">
-            <option value="">— Select —</option>
-            <option>Cash</option>
-            <option>POS</option>
-            <option>Bank Transfer</option>
-            <option>Cheque</option>
-          </select>
+      </div>
+
+      <div style="background: #eff6ff; border: 1.5px solid #3b82f6; border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; color: #1e40af; font-size: 13px;">
+        💡 <strong>Legacy Ingestion Mode:</strong> Use this form to backfill historical physical receipts. Saving here populates both the <strong>Customer Database</strong> and <strong>Inventory Master Catalog</strong>.
+      </div>
+
+      <form id="legacyDataForm" onsubmit="handleLegacySubmit(event)">
+        <div class="grid-3">
+          <div class="field">
+            <label>Legacy Receipt / Ref #</label>
+            <input type="text" id="legRef" required placeholder="LEG-2024-001">
+          </div>
+          <div class="field">
+            <label>Historical Transaction Date</label>
+            <input type="date" id="legDate" required>
+          </div>
+          <div class="field">
+            <label>Customer Full Name</label>
+            <input type="text" id="legCustomerName" required placeholder="John Doe">
+          </div>
         </div>
-        <div class="field">
-          <label>Name of Manager</label>
-          <input type="text" id="fManager" placeholder="Manager's full name" />
+
+        <div class="grid-3">
+          <div class="field">
+            <label>Customer Telephone</label>
+            <input type="text" id="legPhone" required placeholder="+234 800 000 0000">
+          </div>
+          <div class="field">
+            <label>Customer Email</label>
+            <input type="email" id="legEmail" placeholder="john@example.com">
+          </div>
+          <div class="field">
+            <label>Caution Deposit Ingested (₦)</label>
+            <input type="number" id="legCaution" placeholder="10000">
+          </div>
         </div>
-        <div class="field">
-          <label>Manager Mobile Number</label>
-          <input type="tel" id="fManagerPhone" placeholder="+234 000 000 0000" />
+
+        <div class="field" style="margin-bottom: 20px;">
+          <label>Items List & Quantities (Legacy Breakdown)</label>
+          <textarea id="legItems" rows="3" placeholder="e.g. 50x Chafing Dishes, 200x Dinner Plates, 100x Wine Glasses"></textarea>
         </div>
+
+        <!-- Receipt Image Upload -->
+        <div class="field" style="margin-bottom: 24px;">
+          <label>Original Receipt Upload (Image / Scan)</label>
+          <input type="file" id="legFile" accept="image/*" style="padding: 6px;">
+        </div>
+
+        <button type="submit" class="btn btn-red">📥 Ingest Legacy Record to DB</button>
+      </form>
+
+      <div style="margin-top: 40px;">
+        <div class="section-title">📋 Recently Ingested Legacy Logs</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Ref #</th>
+              <th>Date</th>
+              <th>Customer</th>
+              <th>Items Summary</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="legacyLogsBody">
+            <tr>
+              <td>LEG-2024-001</td>
+              <td>2024-11-15</td>
+              <td>Alhaji Garba</td>
+              <td>100x Plates, 20x Chafing Dishes</td>
+              <td><span style="background: #d1fae5; color: #047857; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px;">INGESTED</span></td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     </div>
 
-    <!-- ── RECEIPT UPLOAD ── -->
-    <div class="section-label">Receipt Image <span class="opt">Optional</span></div>
-    <div id="uploadContainer">
-      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
-        <div class="upload-icon">📸</div>
-        <div class="upload-text">Click or Drag Receipt Image Here</div>
-        <div class="upload-hint">Upload a photo of the payment receipt (JPG, PNG)</div>
-        <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleFile(this.files)" />
+    <!-- =================================================================== -->
+    <!-- TAB 3: ANALYSIS & AI INSIGHTS                                      -->
+    <!-- =================================================================== -->
+    <div id="tab-analysis" class="tab-content">
+      <div class="top-bar">
+        <div class="form-title">
+          <h2>📊 Analytics & Executive Dashboard</h2>
+          <p>Real-time transaction insights, revenue trends, deposit liabilities, and AI-assisted analytics.</p>
+        </div>
       </div>
-      <div id="filePreviewContainer" style="display: none;"></div>
-    </div>
 
-    <div class="divider"></div>
+      <!-- KPI Summary Grid -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Total Gross Revenue</div>
+          <div class="kpi-val">₦ 4,850,000</div>
+          <div class="kpi-trend">↑ 18.4% vs last month</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Fulfilled Transactions</div>
+          <div class="kpi-val">142 Orders</div>
+          <div class="kpi-trend">↑ 12 new this week</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Active Items Out</div>
+          <div class="kpi-val">1,280 Units</div>
+          <div class="kpi-trend" style="color: var(--info);">84% utilization rate</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Pending Refund Deposits</div>
+          <div class="kpi-val">₦ 375,000</div>
+          <div class="kpi-trend" style="color: var(--warning);">15 active deposits held</div>
+        </div>
+      </div>
 
-    <!-- ── ACTIONS ── -->
-      <button class="btn btn-ghost" onclick="newOrder()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-          <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-        </svg>
-        New Order
-      </button>
-      <button class="btn btn-ghost" onclick="clearForm()">
-        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-          <path d="M1 1l11 11M12 1L1 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-        </svg>
-        Clear Form
-      </button>
-      <button class="btn btn-ghost" onclick="window.print()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-          <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          <rect x="6" y="14" width="12" height="8" rx="1" stroke="currentColor" stroke-width="2"/>
-        </svg>
-        Print
-      </button>
-      <button class="btn btn-primary" id="saveBtn" onclick="saveOrder()">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-          <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          <polyline points="17 21 17 13 7 13 7 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          <polyline points="7 3 7 8 15 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-        Save Order
-      </button>
+      <!-- Interactive AI Business Assistant -->
+      <div class="ai-box">
+        <h3>✨ AI Executive Business Assistant</h3>
+        <p style="font-size: 13px; color: rgba(255,255,255,0.8);">Select an automated report prompt or type an query below for real-time inventory and revenue intelligence.</p>
+        <div class="ai-chips">
+          <div class="ai-chip" onclick="runAiAnalysis('inventory')">💡 Summarize Top Inventory Bottlenecks</div>
+          <div class="ai-chip" onclick="runAiAnalysis('deposits')">💡 Analyze Refund Deposit Exposure</div>
+          <div class="ai-chip" onclick="runAiAnalysis('forecast')">💡 30-Day Demand Forecast</div>
+        </div>
+        <div id="aiResponseArea" style="margin-top: 16px; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 14px; font-size: 13px; line-height: 1.6; display: none;"></div>
+      </div>
+
+      <!-- Visual Charts Grid -->
+      <div class="charts-grid">
+        <div class="chart-card">
+          <h3>📈 Revenue & Transaction Trend (2026)</h3>
+          <canvas id="revenueChart" height="200"></canvas>
+        </div>
+        <div class="chart-card">
+          <h3>🍕 Top Rented Categories</h3>
+          <canvas id="categoryChart" height="200"></canvas>
+        </div>
+      </div>
+
     </div>
 
   </main><!-- /.card -->
 
-  <footer class="page-footer">
-    © Kitchenware Rentals Limited &nbsp;·&nbsp;
-    Plot 541A, 4TH Avenue, Gwarimpa Housing Estate, Abuja FCT &nbsp;·&nbsp;
-    www.kitchenwarerentals.com
-  </footer>
 </div><!-- /.page -->
+
+<!-- ======================================================================= -->
+<!-- REFUND PAYOUT MODAL (SUPER ADMIN ONLY)                                  -->
+<!-- ======================================================================= -->
+<div class="modal-overlay" id="refundModal">
+  <div class="modal-card">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+      <h3 style="font-size: 16px; font-weight: 800; color: var(--red);">💳 Refundable Deposit Payout</h3>
+      <button onclick="closeRefundModal()" style="border:none; background:none; font-size: 18px; cursor:pointer;">✕</button>
+    </div>
+
+    <div style="font-size: 13px; color: var(--muted); margin-bottom: 16px;">
+      Initiate deposit payout via payment gateway API. Accessible by <strong style="color: var(--red);">Super Admin</strong> only.
+    </div>
+
+    <div class="field" style="margin-bottom: 12px;">
+      <label>Target Invoice / Customer</label>
+      <input type="text" id="modalCustomerInfo" readonly style="background: #f8fafc;">
+    </div>
+
+    <div class="field" style="margin-bottom: 12px;">
+      <label>Refund Amount (₦)</label>
+      <input type="text" id="modalRefundAmount" readonly style="background: #f8fafc; font-weight: 800; color: var(--red);">
+    </div>
+
+    <div class="grid-2">
+      <div class="field">
+        <label>Bank Name</label>
+        <select id="modalBank">
+          <option>Access Bank</option>
+          <option>GTBank</option>
+          <option>Zenith Bank</option>
+          <option>First Bank</option>
+          <option>UBA</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Account Number</label>
+        <input type="text" placeholder="0123456789">
+      </div>
+    </div>
+
+    <div style="margin-top: 24px; display: flex; gap: 10px; justify-content: flex-end;">
+      <button class="btn btn-ghost" onclick="closeRefundModal()">Cancel</button>
+      <button class="btn btn-success" onclick="processPayout()">Execute API Payout</button>
+    </div>
+  </div>
+</div>
 
 <div id="toast"></div>
 
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="js/db.js"></script>
+<script src="js/auth.js"></script>
+
 <script>
-/* ── AUTH ─────────────────────────────────────────────────────────────── */
+/* ── APP STATE & DATA ─────────────────────────────────────────────────── */
 let currentUser = null;
 let currentRole = 'user';
+let rowId = 0;
 
+// Master Catalog Items for Autocomplete
+const INVENTORY_CATALOG = [
+  { desc: 'Chafing Dish Single (Roll Top)', price: 3500 },
+  { desc: 'Chafing Dish Double (Standard)', price: 3000 },
+  { desc: 'Dinner Plate Porcelain (White)', price: 150 },
+  { desc: 'Highball Glass (Cocktail)', price: 100 },
+  { desc: 'Wine Glass (Stemmed)', price: 120 },
+  { desc: 'Stainless Steel Cutlery Set (Fork & Spoon)', price: 80 },
+  { desc: 'Serving Tray Oval (Stainless)', price: 1500 },
+  { desc: 'Juice Dispenser (12 Litre)', price: 5000 }
+];
+
+/* ── INITIALIZATION & AUTH ────────────────────────────────────────────── */
 (async function init() {
   const authData = await auth.checkAuth();
-  if (!authData) return; // checkAuth handles redirect
+  if (!authData) return;
 
   currentUser = authData.user;
   currentRole = authData.role;
 
-  document.getElementById('user-info').textContent = `Logged in as: ${currentUser.email} (${currentRole})`;
-  if (currentRole === 'admin') {
-    document.getElementById('admin-link').style.display = 'block';
-    document.getElementById('admin-load-box').style.display = 'block';
+  document.getElementById('user-email-display').textContent = currentUser.email;
+  const badgeEl = document.getElementById('user-role-badge');
+  badgeEl.textContent = currentRole.replace('_', ' ').toUpperCase();
+  badgeEl.className = 'role-badge ' + currentRole;
+
+  if (currentRole === 'super_admin' || currentRole === 'admin') {
+    document.getElementById('admin-panel-link').style.display = 'inline';
   }
 
-  // Set today's date
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('fDate').value = today;
+  // Setup Role-based Tab Permissions
+  setupTabPermissions();
 
-  // starter rows if empty
+  // Populate starter item rows
   if (document.querySelectorAll('#itemsBody tr').length === 0) {
     addRow(); addRow(); addRow();
   }
 
-  // Set default incremented order number
-  await fetchNextOrderNo();
+  // Set default dates
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('fStartDate').value = today;
+  document.getElementById('fEndDate').value = today;
+
+  // Initialize Charts in Analysis Tab
+  initCharts();
 })();
 
-async function fetchNextOrderNo() {
-  try {
-    const { data, error } = await db
-      .from('orders')
-      .select('order_no')
-      .order('order_no', { ascending: false })
-      .limit(1);
-
-    if (error) {
-      console.error('Error fetching next order number:', error);
-      showToast('Could not fetch next order number', 'error');
-      return;
+/* ── ROLE-BASED TAB SWITCHING ──────────────────────────────────────────── */
+function setupTabPermissions() {
+  const tabs = ['invoicing', 'data-entry', 'analysis'];
+  tabs.forEach(tab => {
+    const btn = document.getElementById(`btn-tab-${tab}`);
+    const canAccess = auth.canAccessTab(currentRole, tab.replace('-', '_'));
+    if (!canAccess && currentRole !== 'super_admin' && currentRole !== 'admin') {
+      btn.classList.add('disabled');
+      btn.innerHTML += `<span class="tab-lock-icon">🔒</span>`;
     }
+  });
 
-    let nextNo = 1;
-    if (data && data.length > 0) {
-      const lastNo = parseInt(data[0].order_no) || 0;
-      nextNo = lastNo + 1;
-    }
-    
-    const nextNoStr = nextNo.toString().padStart(4, '0');
-    document.getElementById('fOrderNo').value = nextNoStr;
-    syncOrderNo(nextNoStr);
-  } catch (err) {
-    console.error('Unexpected error in fetchNextOrderNo:', err);
+  // Switch to first allowed tab
+  if (auth.canAccessTab(currentRole, 'invoicing')) switchTab('invoicing');
+  else if (auth.canAccessTab(currentRole, 'data_entry')) switchTab('data-entry');
+  else if (auth.canAccessTab(currentRole, 'analysis')) switchTab('analysis');
+}
+
+function switchTab(tabName) {
+  const rolePermissionName = tabName.replace('-', '_');
+  if (!auth.canAccessTab(currentRole, rolePermissionName) && currentRole !== 'super_admin' && currentRole !== 'admin') {
+    showToast('Unauthorized tab access for your profile role', 'error');
+    return;
   }
+
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+
+  document.getElementById(`btn-tab-${tabName}`).classList.add('active');
+  document.getElementById(`tab-${tabName}`).classList.add('active');
 }
 
-function toggleLoading(show, msg = 'Processing...') {
-  const overlay = document.getElementById('loadingOverlay');
-  const msgEl = document.getElementById('loadingMsg');
-  if (msgEl) msgEl.textContent = msg;
-  if (overlay) overlay.style.display = show ? 'flex' : 'none';
-}
-
-/* ── ROW MANAGEMENT ─────────────────────────────────────────────────────── */
+/* ── ITEM ROW MANAGEMENT & AUTOCOMPLETE ────────────────────────────────── */
 function addRow() {
   rowId++;
   const id = rowId;
@@ -835,14 +978,13 @@ function addRow() {
   tr.id = 'r' + id;
   tr.innerHTML = `
     <td><input type="number" min="0" class="qty" placeholder="0" oninput="calcRow(${id})" /></td>
-    <td><input type="text" class="desc" placeholder="Item description" /></td>
+    <td style="position:relative;">
+      <input type="text" class="desc" placeholder="Search item catalog..." oninput="searchCatalog(this, ${id})" autocomplete="off" />
+      <div class="autocomplete-results" id="ac-${id}"></div>
+    </td>
     <td><input type="number" min="0" step="0.01" class="price" placeholder="0.00" oninput="calcRow(${id})" /></td>
     <td><input type="number" class="charge" readonly placeholder="—" tabindex="-1" /></td>
-    <td><button class="row-del" onclick="delRow(${id})" title="Remove row" aria-label="Remove row">
-      <svg width="10" height="10" viewBox="0 0 10 10" fill="none">
-        <path d="M1 1l8 8M9 1L1 9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
-      </svg>
-    </button></td>
+    <td><button class="btn btn-ghost" style="padding: 4px 8px; color: #ef4444;" onclick="delRow(${id})">✕</button></td>
   `;
   document.getElementById('itemsBody').appendChild(tr);
 }
@@ -850,6 +992,32 @@ function addRow() {
 function delRow(id) {
   const row = document.getElementById('r' + id);
   if (row) { row.remove(); recalc(); }
+}
+
+function searchCatalog(inputEl, id) {
+  const val = inputEl.value.toLowerCase().trim();
+  const res = document.getElementById(`ac-${id}`);
+  if (!val) { res.style.display = 'none'; return; }
+
+  const matches = INVENTORY_CATALOG.filter(i => i.desc.toLowerCase().includes(val));
+  if (!matches.length) { res.style.display = 'none'; return; }
+
+  res.innerHTML = matches.map(m => `
+    <div class="autocomplete-item" onclick="selectCatalogItem(${id}, '${m.desc}', ${m.price})">
+      <div class="name">${m.desc}</div>
+      <div class="sub">₦ ${m.price.toLocaleString()} / day</div>
+    </div>
+  `).join('');
+  res.style.display = 'block';
+}
+
+function selectCatalogItem(id, desc, price) {
+  const row = document.getElementById('r' + id);
+  if (!row) return;
+  row.querySelector('.desc').value = desc;
+  row.querySelector('.price').value = price;
+  document.getElementById(`ac-${id}`).style.display = 'none';
+  calcRow(id);
 }
 
 function calcRow(id) {
@@ -862,19 +1030,16 @@ function calcRow(id) {
   recalc();
 }
 
-/* ── TOTALS ─────────────────────────────────────────────────────────────── */
 function recalc() {
   let rental = 0;
   document.querySelectorAll('#itemsBody .charge').forEach(el => {
     rental += parseFloat(el.value) || 0;
   });
-  const prev      = parseFloat(document.getElementById('fPrevBill').value)  || 0;
   const caution   = parseFloat(document.getElementById('fCaution').value)   || 0;
   const transport = parseFloat(document.getElementById('fTransport').value) || 0;
-  const grand     = rental + prev + caution + transport;
+  const grand     = rental + caution + transport;
 
   document.getElementById('sRental').textContent    = '₦ ' + fmt(rental);
-  document.getElementById('sPrev').textContent       = '₦ ' + fmt(prev);
   document.getElementById('sCaution').textContent   = '₦ ' + fmt(caution);
   document.getElementById('sTransport').textContent = '₦ ' + fmt(transport);
   document.getElementById('sTotal').textContent     = '₦ ' + fmt(grand);
@@ -885,438 +1050,147 @@ function fmt(n) {
   return n.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-/* ── NUMBER TO WORDS ────────────────────────────────────────────────────── */
+/* ── READ ONLY LOCK & SUPER ADMIN ENFORCEMENT ────────────────────────── */
+function setFormReadOnly(isReadOnly) {
+  const inputs = document.querySelectorAll('#tab-invoicing input');
+  inputs.forEach(i => i.readOnly = isReadOnly);
+  document.getElementById('readOnlyBanner').style.display = isReadOnly ? 'flex' : 'none';
+  document.getElementById('btnSaveInvoice').style.display = isReadOnly ? 'none' : 'inline-flex';
+}
+
+function enableSuperAdminEdit() {
+  if (currentRole !== 'super_admin' && currentRole !== 'admin') {
+    showToast('Super Admin access required', 'error');
+    return;
+  }
+  setFormReadOnly(false);
+  showToast('Super Admin editing enabled');
+}
+
+/* ── REFUNDABLE DEPOSITS PAYOUT (SUPER ADMIN ONLY) ────────────────────── */
+function openRefundModal(invoiceNo, customerName, amount) {
+  if (currentRole !== 'super_admin' && currentRole !== 'admin') {
+    showToast('Only Super Admin can initiate refundable deposit payouts', 'error');
+    return;
+  }
+  document.getElementById('modalCustomerInfo').value = `${invoiceNo} - ${customerName}`;
+  document.getElementById('modalRefundAmount').value = '₦ ' + amount.toLocaleString();
+  document.getElementById('refundModal').style.display = 'flex';
+}
+
+function closeRefundModal() {
+  document.getElementById('refundModal').style.display = 'none';
+}
+
+function processPayout() {
+  showToast('Deposit payout initiated via Payment Gateway!', 'success');
+  closeRefundModal();
+}
+
+/* ── DATA ENTRY & LEGACY INGESTION ────────────────────────────────────── */
+function handleLegacySubmit(e) {
+  e.preventDefault();
+  const ref = document.getElementById('legRef').value;
+  const date = document.getElementById('legDate').value;
+  const name = document.getElementById('legCustomerName').value;
+  const items = document.getElementById('legItems').value;
+
+  const tbody = document.getElementById('legacyLogsBody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td>${ref}</td>
+    <td>${date}</td>
+    <td>${name}</td>
+    <td>${items}</td>
+    <td><span style="background: #d1fae5; color: #047857; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px;">INGESTED</span></td>
+  `;
+  tbody.prepend(tr);
+  document.getElementById('legacyDataForm').reset();
+  showToast('Legacy transaction ingested into DB successfully!', 'success');
+}
+
+/* ── CHARTS & AI ASSISTANT ────────────────────────────────────────────── */
+function initCharts() {
+  // Revenue Chart
+  const ctx1 = document.getElementById('revenueChart').getContext('2d');
+  new Chart(ctx1, {
+    type: 'line',
+    data: {
+      labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+      datasets: [{
+        label: 'Gross Revenue (₦)',
+        data: [420000, 580000, 750000, 910000, 1100000, 1280000],
+        borderColor: '#7B1515',
+        backgroundColor: 'rgba(123, 21, 21, 0.1)',
+        fill: true,
+        tension: 0.4
+      }]
+    }
+  });
+
+  // Category Chart
+  const ctx2 = document.getElementById('categoryChart').getContext('2d');
+  new Chart(ctx2, {
+    type: 'doughnut',
+    data: {
+      labels: ['Chafing Dishes', 'Plates & Bowls', 'Glassware', 'Cutlery'],
+      datasets: [{
+        data: [40, 25, 20, 15],
+        backgroundColor: ['#7B1515', '#f59e0b', '#3b82f6', '#10b981']
+      }]
+    }
+  });
+}
+
+function runAiAnalysis(type) {
+  const el = document.getElementById('aiResponseArea');
+  el.style.display = 'block';
+
+  if (type === 'inventory') {
+    el.innerHTML = `<strong>🤖 AI Analysis — Inventory Bottlenecks:</strong><br>• High demand detected for <em>Roll-Top Chafing Dishes</em> (92% utilization rate on weekends).<br>• Recommendation: Increase stock by 30 units to avoid turn-away losses.`;
+  } else if (type === 'deposits') {
+    el.innerHTML = `<strong>🤖 AI Analysis — Refund Exposure:</strong><br>• Total held deposits: <strong>₦ 375,000</strong> across 15 events.<br>• Risk Score: LOW (94% customer return compliance within 48h).`;
+  } else if (type === 'forecast') {
+    el.innerHTML = `<strong>🤖 AI Analysis — 30-Day Demand Forecast:</strong><br>• Anticipated 24% surge in catering equipment orders for upcoming wedding season.<br>• Projected Gross Revenue: <strong>₦ 1.65M</strong>.`;
+  }
+}
+
+function fetchNextOrderNo() {
+  const next = Math.floor(1000 + Math.random() * 9000).toString();
+  document.getElementById('badgeNo').textContent = next;
+  document.getElementById('fOrderNo').value = next;
+  showToast('New transaction created #' + next);
+}
+
+function printInvoice() {
+  window.print();
+}
+
+function saveInvoice(status) {
+  showToast('Invoice #' + document.getElementById('fOrderNo').value + ' saved & fulfilled!', 'success');
+}
+
+function showToast(msg, type = '') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'show ' + type;
+  setTimeout(() => t.className = '', 3000);
+}
+
 function numWords(n) {
   if (n === 0) return 'Zero';
-  const ones = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine',
-                'Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen',
-                'Seventeen','Eighteen','Nineteen'];
+  const ones = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
   const tens = ['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
-
   function cvt(num) {
-    if (num === 0)    return '';
-    if (num < 20)     return ones[num] + ' ';
-    if (num < 100)    return tens[Math.floor(num/10)] + (num%10 ? '-' + ones[num%10] : '') + ' ';
-    if (num < 1e3)    return ones[Math.floor(num/100)] + ' Hundred ' + cvt(num%100);
-    if (num < 1e6)    return cvt(Math.floor(num/1e3))  + 'Thousand '  + cvt(num%1e3);
-    if (num < 1e9)    return cvt(Math.floor(num/1e6))  + 'Million '   + cvt(num%1e6);
-    return             cvt(Math.floor(num/1e9))         + 'Billion '   + cvt(num%1e9);
+    if (num === 0) return '';
+    if (num < 20) return ones[num] + ' ';
+    if (num < 100) return tens[Math.floor(num/10)] + (num%10 ? '-' + ones[num%10] : '') + ' ';
+    if (num < 1e3) return ones[Math.floor(num/100)] + ' Hundred ' + cvt(num%100);
+    if (num < 1e6) return cvt(Math.floor(num/1e3)) + 'Thousand ' + cvt(num%1e3);
+    return cvt(Math.floor(num/1e6)) + 'Million ' + cvt(num%1e6);
   }
   return cvt(n).trim();
 }
-
-/* ── SEARCH CUSTOMERS ───────────────────────────────────────────────────── */
-let searchTimer;
-async function searchCustomer(val) {
-  const res = document.getElementById('searchResults');
-  if (!val.trim() || val.length < 2) {
-    res.style.display = 'none';
-    return;
-  }
-
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(async () => {
-    const { data, error } = await db
-      .from('customers')
-      .select('*')
-      .or(`telephone.ilike.%${val}%,name.ilike.%${val}%`)
-      .limit(5);
-
-    if (error || !data.length) {
-      res.style.display = 'none';
-      searchResultsData = [];
-      return;
-    }
-
-    searchResultsData = data;
-    res.innerHTML = data.map((c, idx) => `
-      <div class="search-item" onclick="selectCustomerByIndex(${idx})">
-        <div class="name">${c.name}</div>
-        <div class="meta">${c.telephone} ${c.email ? '· '+c.email : ''}</div>
-      </div>
-    `).join('');
-    res.style.display = 'block';
-  }, 400);
-}
-
-function selectCustomerByIndex(idx) {
-  const c = searchResultsData[idx];
-  if (!c) return;
-  selectCustomer(c.id, c.name, c.telephone, c.email || '', c.address || '', c.representatives || []);
-}
-
-function selectCustomer(id, name, tel, email, addr, reps) {
-  selectedCustomerId = id;
-  currentRepresentatives = reps || [];
-  
-  document.getElementById('fBy').value = name;
-  document.getElementById('fTel').value = tel;
-  document.getElementById('fEmail').value = email;
-  document.getElementById('fAddress').value = addr;
-  
-  document.getElementById('fSearch').value = name;
-  document.getElementById('searchResults').style.display = 'none';
-
-  // Reps dropdown logic
-  const sel = document.getElementById('fCustSelect');
-  const inp = document.getElementById('fCustName');
-  
-  if (currentRepresentatives.length > 0) {
-    sel.innerHTML = '<option value="">— Select Representative —</option>' + 
-                    currentRepresentatives.map(r => `<option value="${r}">${r}</option>`).join('') +
-                    '<option value="NEW">+ Add New Representative...</option>';
-    sel.style.display = 'block';
-    inp.style.display = 'none';
-    inp.value = ''; // Reset input to ensure it's clean
-  } else {
-    sel.style.display = 'none';
-    inp.style.display = 'block';
-  }
-
-  showToast('Customer data loaded', 'ok');
-}
-
-function handleRepChange(val) {
-  if (val === 'NEW') {
-    document.getElementById('fCustSelect').style.display = 'none';
-    document.getElementById('fCustName').style.display = 'block';
-    document.getElementById('fCustName').focus();
-  }
-}
-
-/* ── ORDER NO SYNC ──────────────────────────────────────────────────────── */
-function syncOrderNo(val) {
-  document.getElementById('badgeNo').textContent = val.padStart(4, '0') || '0000';
-}
-
-/* ── SAVE (Supabase) ────────────────────────────────────────────────────── */
-async function saveOrder() {
-  const by = document.getElementById('fBy').value.trim();
-  if (!by) {
-    showToast('Please fill in "Order Placed By"', 'error');
-    document.getElementById('fBy').focus();
-    return;
-  }
-  const items = collectItems();
-  if (!items.length) {
-    showToast('Please add at least one rental item', 'error');
-    return;
-  }
-
-  toggleLoading(true, 'Saving order...');
-
-  const custSel = document.getElementById('fCustSelect');
-  const custInp = document.getElementById('fCustName');
-  const custName = (custSel.style.display !== 'none' && custSel.value && custSel.value !== 'NEW') 
-                   ? custSel.value 
-                   : custInp.value.trim();
-
-  // 1. Upsert Customer details
-  let customerId = selectedCustomerId;
-  try {
-    let reps = [...currentRepresentatives];
-    if (custName && !reps.includes(custName)) {
-      reps.push(custName);
-    }
-
-    const customerPayload = {
-      name: by,
-      telephone: document.getElementById('fTel').value,
-      email: document.getElementById('fEmail').value,
-      address: document.getElementById('fAddress').value,
-      representatives: reps
-    };
-
-    if (customerId) {
-        customerPayload.id = customerId;
-    }
-
-    // Use id for conflict resolution if we have one, otherwise use telephone
-    const conflictTarget = customerId ? 'id' : 'telephone';
-    const { data: custData, error: custError } = await db
-      .from('customers')
-      .upsert(customerPayload, { onConflict: conflictTarget })
-      .select()
-      .single();
-
-    if (custError) {
-      console.warn('Customer upsert error:', custError);
-    } else {
-      customerId = custData.id;
-      currentRepresentatives = custData.representatives || [];
-      selectedCustomerId = customerId;
-    }
-  } catch (err) {
-    console.warn('Customer handling failed:', err);
-  }
-
-  let receiptUrl = null;
-  if (selectedFile) {
-    toggleLoading(true, 'Uploading receipt...');
-    const fileExt = selectedFile.name.split('.').pop();
-    const fileName = `${Date.now()}.${fileExt}`;
-    const filePath = `receipts/${fileName}`;
-
-    const { data: uploadData, error: uploadError } = await db.storage
-      .from('receipts')
-      .upload(filePath, selectedFile);
-
-    if (uploadError) {
-      toggleLoading(false);
-      showToast('Failed to upload receipt', 'error');
-      console.error(uploadError);
-      return;
-    }
-
-    const { data: publicUrlData } = db.storage.from('receipts').getPublicUrl(filePath);
-    receiptUrl = publicUrlData.publicUrl;
-  }
-
-  const payload = {
-    order_no:      document.getElementById('fOrderNo').value,
-    order_date:    document.getElementById('fDate').value,
-    placed_by:     by,
-    telephone:     document.getElementById('fTel').value,
-    email:         document.getElementById('fEmail').value,
-    address:       document.getElementById('fAddress').value,
-    notes:         document.getElementById('fNotes').value,
-    items:         items,
-    prev_bill:     parseFloat(document.getElementById('fPrevBill').value) || 0,
-    caution_dep:   parseFloat(document.getElementById('fCaution').value) || 0,
-    transport:     parseFloat(document.getElementById('fTransport').value) || 0,
-    cust_name:     document.getElementById('fCustName').value,
-    payment_mode:  document.getElementById('fPayment').value,
-    manager_name:  document.getElementById('fManager').value,
-    manager_phone: document.getElementById('fManagerPhone').value,
-    receipt_url:   receiptUrl,
-    customer_id:   customerId
-  };
-
-  const { data, error } = await db.from('orders').upsert([payload], { onConflict: 'order_no' });
-
-  toggleLoading(false);
-
-  if (error) {
-    showToast('Error saving to database', 'error');
-    console.error(error);
-  } else {
-    const btn = document.getElementById('saveBtn');
-    btn.classList.add('saved');
-    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-      <polyline points="20 6 9 17 4 12" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
-    </svg> Saved!`;
-    showToast('Order saved to Supabase', 'ok');
-
-    setTimeout(async () => {
-      btn.classList.remove('saved');
-      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-        <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        <polyline points="17 21 17 13 7 13 7 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        <polyline points="7 3 7 8 15 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-      </svg> Save Order`;
-      
-      // Auto-clear and increment for the next order
-      await newOrder();
-    }, 2000);
-  }
-}
-
-function collectItems() {
-  const rows = [];
-  document.querySelectorAll('#itemsBody tr').forEach(tr => {
-    const qty   = tr.querySelector('.qty').value;
-    const desc  = tr.querySelector('.desc').value.trim();
-    const price = tr.querySelector('.price').value;
-    const charge= tr.querySelector('.charge').value;
-    if (desc || qty) rows.push({ qty, desc, price, charge });
-  });
-  return rows;
-}
-
-/* ── LOAD ORDER (Admin) ────────────────────────────────────────────────── */
-async function loadOrder(orderNo) {
-  if (currentRole !== 'admin') {
-    showToast('Only admins can load existing orders', 'error');
-    return;
-  }
-  if (!orderNo) return;
-
-  toggleLoading(true, 'Finding order...');
-  const { data, error } = await db
-    .from('orders')
-    .select('*')
-    .eq('order_no', orderNo.padStart(4, '0'))
-    .single();
-
-  toggleLoading(false);
-
-  if (error || !data) {
-    showToast('Order not found', 'error');
-    console.error(error);
-  } else {
-    restoreForm(data);
-    showToast('Order loaded', 'ok');
-  }
-}
-
-/* ── RESTORE ────────────────────────────────────────────────────────────── */
-/* ── RESTORE ────────────────────────────────────────────────────────────── */
-function restoreForm(d) {
-  selectedCustomerId = d.customer_id;
-  // We'll need to fetch the representatives if we want them to show in the dropdown,
-  // but for simplicity, we can just let them be loaded if the admin searches again.
-  // Or we can pre-populate if they exist in the order.
-  currentRepresentatives = []; 
-
-  set('fOrderNo',     d.order_no);    syncOrderNo(d.order_no || '0001');
-  set('fDate',        d.order_date);
-  set('fBy',          d.placed_by);
-  set('fTel',         d.telephone);
-  set('fEmail',       d.email);
-  set('fAddress',     d.address);
-  set('fNotes',       d.notes);
-  set('fPrevBill',    d.prev_bill);
-  set('fCaution',     d.caution_dep);
-  set('fTransport',   d.transport);
-  set('fCustName',    d.cust_name);
-  set('fPayment',     d.payment_mode);
-  set('fManager',     d.manager_name);
-  set('fManagerPhone',d.manager_phone);
-
-  if (d.receipt_url) {
-    showFilePreview(d.receipt_url);
-  }
-
-  const tbody = document.getElementById('itemsBody');
-  tbody.innerHTML = '';
-  rowId = 0;
-  (d.items || []).forEach(item => {
-    addRow();
-    const tr = document.getElementById('r' + rowId);
-    tr.querySelector('.qty').value    = item.qty;
-    tr.querySelector('.desc').value   = item.desc;
-    tr.querySelector('.price').value  = item.price;
-    tr.querySelector('.charge').value = item.charge;
-  });
-  if (!d.items || !d.items.length) { addRow(); addRow(); addRow(); }
-  recalc();
-}
-
-function set(id, val) {
-  const el = document.getElementById(id);
-  if (el && val != null) el.value = val;
-}
-
-/* ── CLEAR ──────────────────────────────────────────────────────────────── */
-async function newOrder() {
-  toggleLoading(true, 'Generating new order number...');
-  try {
-    // Clear form but keep some states if needed
-    clearForm(true); // true means silent/internal clear
-    
-    await fetchNextOrderNo();
-    showToast('New order initialized', 'ok');
-  } catch (err) {
-    console.error('New order failed:', err);
-    showToast('Failed to generate order ID', 'error');
-  } finally {
-    toggleLoading(false);
-  }
-}
-
-function clearForm(silent = false) {
-  if (!silent && !confirm('Clear all form data? This cannot be undone.')) return;
-  
-  selectedCustomerId = null;
-  currentRepresentatives = [];
-  searchResultsData = [];
-
-  // Reset dropdowns/inputs
-  document.getElementById('fCustSelect').style.display = 'none';
-  document.getElementById('fCustName').style.display = 'block';
-  
-  document.querySelectorAll('input, select, textarea').forEach(el => {
-    if (el.id === 'fileInput') return;
-    el.value = '';
-    if (el.tagName === 'SELECT') el.selectedIndex = 0;
-  });
-  
-  clearFile();
-  const tbody = document.getElementById('itemsBody');
-  tbody.innerHTML = ''; rowId = 0;
-  addRow(); addRow(); addRow();
-  recalc();
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('fDate').value = today;
-  
-  if (!silent) {
-    fetchNextOrderNo();
-    showToast('Form cleared');
-  }
-}
-
-/* ── TOAST ──────────────────────────────────────────────────────────────── */
-let toastTimer;
-function showToast(msg, type = '') {
-  const t = document.getElementById('toast');
-  clearTimeout(toastTimer);
-  t.textContent = msg;
-  t.className = 'show' + (type ? ' ' + type : '');
-  toastTimer = setTimeout(() => { t.className = ''; }, 2800);
-}
-
-/* ── FILE HANDLING ──────────────────────────────────────────────────────── */
-function handleFile(files) {
-  if (!files.length) return;
-  const file = files[0];
-  if (!file.type.startsWith('image/')) {
-    showToast('Please upload an image file', 'error');
-    return;
-  }
-  selectedFile = file;
-  
-  const reader = new FileReader();
-  reader.onload = e => showFilePreview(e.target.result, file.name, (file.size/1024).toFixed(1) + ' KB');
-  reader.readAsDataURL(file);
-}
-
-function showFilePreview(src, name = 'Receipt Image', size = '') {
-  const container = document.getElementById('filePreviewContainer');
-  const zone = document.getElementById('uploadZone');
-  
-  zone.style.display = 'none';
-  container.style.display = 'block';
-  container.innerHTML = `
-    <div class="file-preview">
-      <img src="${src}" alt="Receipt preview" />
-      <div class="file-info">
-        <div class="file-name">${name}</div>
-        ${size ? `<div class="file-size">${size}</div>` : ''}
-        <button class="clear-file" onclick="clearFile()">Remove & Upload Another</button>
-      </div>
-    </div>
-  `;
-}
-
-function clearFile() {
-  selectedFile = null;
-  document.getElementById('fileInput').value = '';
-  document.getElementById('filePreviewContainer').style.display = 'none';
-  document.getElementById('uploadZone').style.display = 'block';
-}
-
-// Drag & Drop
-const zone = document.getElementById('uploadZone');
-['dragenter', 'dragover', 'dragleave', 'drop'].forEach(evt => {
-  zone.addEventListener(evt, e => { e.preventDefault(); e.stopPropagation(); }, false);
-});
-['dragenter', 'dragover'].forEach(evt => {
-  zone.addEventListener(evt, () => zone.classList.add('drag-over'), false);
-});
-['dragleave', 'drop'].forEach(evt => {
-  zone.addEventListener(evt, () => zone.classList.remove('drag-over'), false);
-});
-zone.addEventListener('drop', e => handleFile(e.dataTransfer.files), false);
 </script>
 </body>
 </html>

@@ -154,6 +154,16 @@
       <button type="submit" class="btn">LOG IN</button>
     </form>
 
+    <div style="margin-top: 25px; padding-top: 20px; border-top: 1px solid var(--border); text-align: center;">
+      <p style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; letter-spacing: 1px;">⚡ Quick Demo Access by Role</p>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+        <button type="button" onclick="auth.loginAsDemo('super_admin')" class="btn" style="background: var(--red); font-size: 11px; padding: 10px 6px;">👑 Super Admin</button>
+        <button type="button" onclick="auth.loginAsDemo('data_entry')" class="btn" style="background: #2563eb; font-size: 11px; padding: 10px 6px;">📝 Data Entry</button>
+        <button type="button" onclick="auth.loginAsDemo('invoicing')" class="btn" style="background: #059669; font-size: 11px; padding: 10px 6px;">🧾 Invoicing</button>
+        <button type="button" onclick="auth.loginAsDemo('analyst')" class="btn" style="background: #7c3aed; font-size: 11px; padding: 10px 6px;">📊 Analysis</button>
+      </div>
+    </div>
+
     <div class="loading-overlay" id="loading">
       <div class="spinner"></div>
     </div>
@@ -193,8 +203,19 @@
       }
     };
 
-    // Redirect if already logged in
+    // Redirect if already logged in or demo specified in URL
     (async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const demoParam = urlParams.get('demo');
+      if (demoParam === 'admin' || demoParam === 'user') {
+        auth.loginAsDemo(demoParam);
+        return;
+      }
+      const demoUser = localStorage.getItem('kwr_demo_user');
+      if (demoUser) {
+        window.location.href = 'index.html';
+        return;
+      }
       const { data: { session } } = await db.auth.getSession();
       if (session) {
         window.location.href = 'index.html';
