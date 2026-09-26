@@ -569,6 +569,9 @@
     <button class="tab-btn" id="btn-tab-analysis" onclick="switchTab('analysis')">
       <span>📊</span> 4. Analysis & AI Insights
     </button>
+    <button class="tab-btn" id="btn-tab-deposits" onclick="switchTab('deposits')">
+      <span>💳</span> 5. Refundable Deposits (Admin)
+    </button>
   </nav>
 
   <!-- ── CARD MAIN CONTAINER ── -->
@@ -679,40 +682,6 @@
       <div style="margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end;">
         <button class="btn btn-ghost" onclick="printInvoice()">🖨️ Print Invoice</button>
         <button class="btn btn-red" id="btnSaveInvoice" onclick="saveInvoice('fulfilled')">💾 Save & Fulfill Invoice</button>
-      </div>
-
-      <!-- Refundable Deposits Management Module -->
-      <div style="margin-top: 48px;">
-        <div class="section-title">💳 Refundable Deposits Management</div>
-        <table id="depositsTable">
-          <thead>
-            <tr>
-              <th>Invoice #</th>
-              <th>Customer</th>
-              <th>Deposit Amount</th>
-              <th>Status</th>
-              <th>Payout Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>#INV-0001</td>
-              <td>Amina Bello (Gwarimpa Event)</td>
-              <td>₦ 25,000.00</td>
-              <td><span style="background: #fef3c7; color: #b45309; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px;">HELD</span></td>
-              <td>
-                <button class="btn btn-success deposit-payout-btn" onclick="openRefundModal('#INV-0001', 'Amina Bello', 25000)">💳 Initiate Payout</button>
-              </td>
-            </tr>
-            <tr>
-              <td>#INV-0002</td>
-              <td>Chief Okafor Catering</td>
-              <td>₦ 50,000.00</td>
-              <td><span style="background: #d1fae5; color: #047857; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px;">REFUNDED</span></td>
-              <td><span style="color: var(--muted); font-size: 11px; font-weight: 600;">Completed</span></td>
-            </tr>
-          </tbody>
-        </table>
       </div>
 
     </div>
@@ -911,6 +880,70 @@
 
     </div>
 
+    <!-- =================================================================== -->
+    <!-- TAB 5: REFUNDABLE DEPOSITS MANAGEMENT (ADMIN ONLY)                 -->
+    <!-- =================================================================== -->
+    <div id="tab-deposits" class="tab-content">
+      <div class="top-bar">
+        <div class="form-title">
+          <h2>💳 Refundable Deposits Management</h2>
+          <p>Review caution deposits, return status, and execute API deposit payouts. Refund payouts require RETURNED transaction status.</p>
+        </div>
+        <div style="text-align: right;">
+          <span style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 11px;">👑 SUPER ADMIN PAYOUT PRIVILEGE</span>
+        </div>
+      </div>
+
+      <!-- Deposit KPI Summary Cards -->
+      <div class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-label">Total Held Deposits</div>
+          <div class="kpi-val" id="kpiHeldDeposits">₦ 120,000</div>
+          <div class="kpi-trend" style="color: var(--warning);">Held pending item inspection</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Total Refunded</div>
+          <div class="kpi-val" id="kpiRefundedDeposits">₦ 50,000</div>
+          <div class="kpi-trend">↑ Paid out successfully</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Eligible Returned Payouts</div>
+          <div class="kpi-val" id="kpiEligiblePayouts">1 Eligible</div>
+          <div class="kpi-trend" style="color: var(--success);">Items returned intact</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-label">Locked Active Rentals</div>
+          <div class="kpi-val" id="kpiLockedRentals">3 Transactions</div>
+          <div class="kpi-trend" style="color: var(--muted);">Requires RETURNED status</div>
+        </div>
+      </div>
+
+      <!-- Filter Controls & Search -->
+      <div class="search-bar-container" style="margin-bottom: 20px;">
+        <div class="search-input-wrapper">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="depositsSearchInput" placeholder="Filter deposits by Invoice # or Customer Name..." oninput="renderDepositsTable()">
+        </div>
+      </div>
+
+      <!-- Deposits Table -->
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 120px;">Invoice #</th>
+            <th>Customer Name</th>
+            <th style="width: 150px;">Deposit Amount (₦)</th>
+            <th style="width: 180px;">Transaction Status</th>
+            <th style="width: 130px;">Deposit Status</th>
+            <th style="width: 220px; text-align: center;">Payout Action</th>
+          </tr>
+        </thead>
+        <tbody id="depositsListBody">
+          <!-- Injected dynamically -->
+        </tbody>
+      </table>
+    </div>
+
   </main><!-- /.card -->
 
 </div><!-- /.page -->
@@ -1059,6 +1092,7 @@ const INITIAL_MASTER_INVOICES = [
     caution: 25000,
     transport: 15000,
     status: 'CONFIRMED',
+    depositStatus: 'HELD',
     items: [
       { qty: 20, desc: 'Chafing Dish Single (Roll Top)', price: 3500, total: 70000 },
       { qty: 200, desc: 'Dinner Plate Porcelain (White)', price: 150, total: 30000 },
@@ -1079,6 +1113,7 @@ const INITIAL_MASTER_INVOICES = [
     caution: 50000,
     transport: 20000,
     status: 'OUT_ON_HIRE',
+    depositStatus: 'REFUNDED',
     items: [
       { qty: 40, desc: 'Chafing Dish Double (Standard)', price: 3000, total: 120000 },
       { qty: 500, desc: 'Dinner Plate Porcelain (White)', price: 150, total: 75000 },
@@ -1098,6 +1133,7 @@ const INITIAL_MASTER_INVOICES = [
     caution: 15000,
     transport: 5000,
     status: 'RETURNED',
+    depositStatus: 'HELD',
     items: [
       { qty: 10, desc: 'Chafing Dish Single (Roll Top)', price: 3500, total: 35000 },
       { qty: 200, desc: 'Wine Glass (Stemmed)', price: 120, total: 24000 },
@@ -1116,6 +1152,7 @@ const INITIAL_MASTER_INVOICES = [
     caution: 30000,
     transport: 10000,
     status: 'PENDING',
+    depositStatus: 'HELD',
     items: [
       { qty: 30, desc: 'Chafing Dish Single (Roll Top)', price: 3500, total: 105000 },
       { qty: 300, desc: 'Dinner Plate Porcelain (White)', price: 150, total: 45000 },
@@ -1185,12 +1222,14 @@ async function fetchInvoicesFromSupabase() {
             caution: order.caution_dep || 0,
             transport: order.transport || 0,
             status: 'CONFIRMED',
+            depositStatus: 'HELD',
             items: Array.isArray(order.items) ? order.items : []
           });
         }
       });
       persistMasterInvoices();
       renderAllInvoicesTable(MASTER_INVOICES);
+      renderDepositsTable();
     }
   } catch (e) {
     console.log('Supabase sync note:', e);
@@ -1231,8 +1270,9 @@ async function fetchInvoicesFromSupabase() {
   // Clear & populate starter item rows
   clearInvoiceForm();
 
-  // Render All Invoices Table List
+  // Render Tables
   renderAllInvoicesTable(MASTER_INVOICES);
+  renderDepositsTable();
 
   // Initialize Charts in Analysis Tab
   initCharts();
@@ -1280,7 +1320,7 @@ function clearInvoiceForm() {
 
 /* ── ROLE-BASED TAB SWITCHING ──────────────────────────────────────────── */
 function setupTabPermissions() {
-  const tabs = ['invoicing', 'all-invoices', 'data-entry', 'analysis'];
+  const tabs = ['invoicing', 'all-invoices', 'data-entry', 'analysis', 'deposits'];
   tabs.forEach(tab => {
     const btn = document.getElementById(`btn-tab-${tab}`);
     if (!btn) return;
@@ -1376,6 +1416,83 @@ function filterInvoiceByStatus() {
   filterAllInvoicesTable(q);
 }
 
+/* ── REFUNDABLE DEPOSITS TAB RENDERING & CONDITIONAL PAYOUT BUTTON ─────── */
+function renderDepositsTable() {
+  const tbody = document.getElementById('depositsListBody');
+  if (!tbody) return;
+
+  const q = (document.getElementById('depositsSearchInput')?.value || '').toLowerCase().trim();
+
+  let depositInvoices = MASTER_INVOICES.filter(i => (i.caution && i.caution > 0));
+
+  if (q) {
+    depositInvoices = depositInvoices.filter(i => 
+      i.invoiceNo.toLowerCase().includes(q) ||
+      i.customerName.toLowerCase().includes(q)
+    );
+  }
+
+  if (depositInvoices.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: var(--muted); padding: 30px;">No refundable deposits found.</td></tr>`;
+    return;
+  }
+
+  let totalHeld = 0;
+  let totalRefunded = 0;
+  let eligibleCount = 0;
+  let lockedCount = 0;
+
+  tbody.innerHTML = depositInvoices.map(inv => {
+    const isReturned = (inv.status === 'RETURNED');
+    const isRefunded = (inv.depositStatus === 'REFUNDED');
+
+    if (isRefunded) {
+      totalRefunded += inv.caution;
+    } else {
+      totalHeld += inv.caution;
+      if (isReturned) eligibleCount++;
+      else lockedCount++;
+    }
+
+    let statusClass = 'pending';
+    let statusLabel = 'Pending';
+    if (inv.status === 'CONFIRMED') { statusClass = 'confirmed'; statusLabel = 'Confirmed (not gone out)'; }
+    else if (inv.status === 'OUT_ON_HIRE') { statusClass = 'on_hire'; statusLabel = 'Out on hire'; }
+    else if (inv.status === 'RETURNED') { statusClass = 'returned'; statusLabel = 'Returned'; }
+
+    let depositBadge = isRefunded
+      ? `<span style="background: #d1fae5; color: #047857; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 11px;">REFUNDED</span>`
+      : `<span style="background: #fef3c7; color: #b45309; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 11px;">HELD</span>`;
+
+    let payoutButton = '';
+    if (isRefunded) {
+      payoutButton = `<span style="color: var(--success); font-size: 12px; font-weight: 700;">✅ Paid Out</span>`;
+    } else if (isReturned) {
+      payoutButton = `<button class="btn btn-success" style="padding: 6px 14px; font-size: 11.5px;" onclick="openRefundModal('${inv.invoiceNo}', '${inv.customerName.replace(/'/g, "\\'")}', ${inv.caution})">💳 Initiate Payout</button>`;
+    } else {
+      payoutButton = `<button class="btn btn-ghost" disabled style="opacity: 0.55; cursor: not-allowed; padding: 6px 12px; font-size: 11px; background: #f1f5f9; color: var(--muted); border: 1.5px solid var(--border);" title="Only when transaction status is set to RETURNED can the refundable deposit payout be enabled">🔒 Requires RETURNED Status</button>`;
+    }
+
+    return `
+      <tr>
+        <td><strong style="color: var(--red); font-family: 'Outfit', sans-serif;">${inv.invoiceNo}</strong></td>
+        <td><strong>${inv.customerName}</strong></td>
+        <td><strong style="color: var(--text);">₦ ${inv.caution.toLocaleString('en-NG', {minimumFractionDigits: 2})}</strong></td>
+        <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
+        <td>${depositBadge}</td>
+        <td style="text-align: center; white-space: nowrap;">${payoutButton}</td>
+      </tr>
+    `;
+  }).join('');
+
+  if (document.getElementById('kpiHeldDeposits')) {
+    document.getElementById('kpiHeldDeposits').textContent = '₦ ' + totalHeld.toLocaleString('en-NG');
+    document.getElementById('kpiRefundedDeposits').textContent = '₦ ' + totalRefunded.toLocaleString('en-NG');
+    document.getElementById('kpiEligiblePayouts').textContent = `${eligibleCount} Eligible`;
+    document.getElementById('kpiLockedRentals').textContent = `${lockedCount} Transactions`;
+  }
+}
+
 /* ── SUPER ADMIN TRANSACTION EDITING FUNCTION ──────────────────────────── */
 function editInvoiceAsSuperAdmin(invoiceNo) {
   if (currentRole !== 'super_admin' && currentRole !== 'admin') {
@@ -1389,10 +1506,8 @@ function editInvoiceAsSuperAdmin(invoiceNo) {
     return;
   }
 
-  // Close detail modal if open
   closeInvoiceDetailModal();
 
-  // Populate Invoicing Form fields
   document.getElementById('badgeNo').textContent = inv.invoiceNo;
   document.getElementById('fOrderNo').value = inv.invoiceNo;
   document.getElementById('fCustomerName').value = inv.customerName || '';
@@ -1404,7 +1519,6 @@ function editInvoiceAsSuperAdmin(invoiceNo) {
   document.getElementById('fCaution').value = inv.caution || '';
   document.getElementById('fTransport').value = inv.transport || '';
 
-  // Populate items table rows
   const tbody = document.getElementById('itemsBody');
   tbody.innerHTML = '';
   rowId = 0;
@@ -1432,11 +1546,7 @@ function editInvoiceAsSuperAdmin(invoiceNo) {
   }
 
   recalc();
-
-  // Enable form editing
   setFormReadOnly(false);
-
-  // Switch tab to Invoicing Form
   switchTab('invoicing');
 
   showToast(`Editing transaction ${inv.invoiceNo} — make your changes and click Save & Fulfill Invoice`, 'success');
@@ -1459,7 +1569,6 @@ function saveInvoice(status = 'CONFIRMED') {
     return;
   }
 
-  // Collect items
   const items = [];
   let subtotal = 0;
   document.querySelectorAll('#itemsBody tr').forEach(row => {
@@ -1480,7 +1589,7 @@ function saveInvoice(status = 'CONFIRMED') {
 
   const grandTotal = subtotal + caution + transport;
 
-  // Create invoice object
+  const existingIdx = MASTER_INVOICES.findIndex(i => i.invoiceNo === invoiceNo);
   const newInvoiceObj = {
     invoiceNo,
     date: startDate || new Date().toISOString().split('T')[0],
@@ -1492,22 +1601,19 @@ function saveInvoice(status = 'CONFIRMED') {
     subtotal,
     caution,
     transport,
-    status: 'CONFIRMED',
+    status: existingIdx !== -1 ? MASTER_INVOICES[existingIdx].status : 'CONFIRMED',
+    depositStatus: existingIdx !== -1 ? MASTER_INVOICES[existingIdx].depositStatus : 'HELD',
     items
   };
 
-  // Upsert into MASTER_INVOICES array
-  const existingIdx = MASTER_INVOICES.findIndex(i => i.invoiceNo === invoiceNo);
   if (existingIdx !== -1) {
     MASTER_INVOICES[existingIdx] = newInvoiceObj;
   } else {
     MASTER_INVOICES.unshift(newInvoiceObj);
   }
 
-  // PERSIST PERMANENTLY TO LOCALSTORAGE
   persistMasterInvoices();
 
-  // Async Insert/Sync to Supabase database
   try {
     db.from('orders').insert({
       order_no: invoiceNo.replace('#INV-', ''),
@@ -1526,30 +1632,10 @@ function saveInvoice(status = 'CONFIRMED') {
     });
   } catch (e) {}
 
-  // Also add caution deposit to Deposits table if caution > 0
-  if (caution > 0) {
-    const depositsBody = document.querySelector('#depositsTable tbody');
-    if (depositsBody) {
-      const newTr = document.createElement('tr');
-      newTr.innerHTML = `
-        <td>${invoiceNo}</td>
-        <td>${customerName}</td>
-        <td>₦ ${caution.toLocaleString('en-NG', {minimumFractionDigits:2})}</td>
-        <td><span style="background: #fef3c7; color: #b45309; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px;">HELD</span></td>
-        <td>
-          <button class="btn btn-success deposit-payout-btn" onclick="openRefundModal('${invoiceNo}', '${customerName.replace(/'/g, "\\'")}', ${caution})">💳 Initiate Payout</button>
-        </td>
-      `;
-      depositsBody.prepend(newTr);
-    }
-  }
-
-  // Update All Invoices List Table immediately!
   renderAllInvoicesTable(MASTER_INVOICES);
+  renderDepositsTable();
 
   showToast(`Invoice ${invoiceNo} saved & updated successfully!`, 'success');
-
-  // Reset/Clear form for next transaction and auto-assign next serial invoice #
   createNewTransaction();
 }
 
@@ -1569,7 +1655,6 @@ function openInvoiceDetailModal(invoiceNo) {
   const isSuperAdmin = (currentRole === 'super_admin' || currentRole === 'admin');
   document.getElementById('modalSuperAdminEditBtn').style.display = isSuperAdmin ? 'inline-flex' : 'none';
 
-  // Render items
   const itemsBody = document.getElementById('modalInvoiceItemsBody');
   itemsBody.innerHTML = inv.items.map(item => `
     <tr>
@@ -1597,6 +1682,7 @@ function updateInvoiceStatusFromModal(newStatus) {
   activeSelectedInvoice.status = newStatus;
   persistMasterInvoices();
   renderAllInvoicesTable(MASTER_INVOICES);
+  renderDepositsTable();
   showToast(`Updated ${activeSelectedInvoice.invoiceNo} status to ${newStatus}`, 'success');
 }
 
@@ -1703,6 +1789,7 @@ function openRefundModal(invoiceNo, customerName, amount) {
     showToast('Only Super Admin can initiate refundable deposit payouts', 'error');
     return;
   }
+  activeSelectedInvoice = MASTER_INVOICES.find(i => i.invoiceNo === invoiceNo);
   document.getElementById('modalCustomerInfo').value = `${invoiceNo} - ${customerName}`;
   document.getElementById('modalRefundAmount').value = '₦ ' + amount.toLocaleString();
   document.getElementById('refundModal').style.display = 'flex';
@@ -1713,7 +1800,13 @@ function closeRefundModal() {
 }
 
 function processPayout() {
-  showToast('Deposit payout initiated via Payment Gateway!', 'success');
+  if (activeSelectedInvoice) {
+    activeSelectedInvoice.depositStatus = 'REFUNDED';
+    persistMasterInvoices();
+    renderDepositsTable();
+    renderAllInvoicesTable(MASTER_INVOICES);
+  }
+  showToast('Deposit payout executed successfully via Payment Gateway API!', 'success');
   closeRefundModal();
 }
 
