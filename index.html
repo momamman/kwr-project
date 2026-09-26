@@ -724,7 +724,7 @@
       <div class="top-bar">
         <div class="form-title">
           <h2>📋 All Invoices & Master Directory</h2>
-          <p>Comprehensive list view of all transactions across all statuses. Click any invoice line to view its confirmation page.</p>
+          <p>Comprehensive list view of all transactions across all statuses. Super Admin can edit any transaction.</p>
         </div>
         <div style="text-align: right;">
           <span style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 11px;">👑 ADMIN & SUPER ADMIN ONLY</span>
@@ -753,10 +753,10 @@
             <th style="width: 110px;">Invoice No.</th>
             <th style="width: 110px;">Date</th>
             <th>Customer Name</th>
-            <th style="width: 280px;">Delivery Address (Text Wrapped)</th>
-            <th style="width: 140px;">Total Rental Cost</th>
-            <th style="width: 170px;">Transaction Status</th>
-            <th style="width: 100px; text-align: center;">Action</th>
+            <th style="width: 260px;">Delivery Address (Text Wrapped)</th>
+            <th style="width: 130px;">Total Rental Cost</th>
+            <th style="width: 160px;">Transaction Status</th>
+            <th style="width: 140px; text-align: center;">Actions</th>
           </tr>
         </thead>
         <tbody id="allInvoicesListBody">
@@ -977,7 +977,8 @@
 
     <div style="margin-top: 24px; display: flex; gap: 10px; justify-content: flex-end;">
       <button class="btn btn-ghost" onclick="window.print()">🖨️ Print Confirmation Invoice</button>
-      <button class="btn btn-red" onclick="closeInvoiceDetailModal()">Close Window</button>
+      <button class="btn btn-red" id="modalSuperAdminEditBtn" onclick="editInvoiceAsSuperAdmin(activeSelectedInvoice.invoiceNo)">✏️ Edit Transaction</button>
+      <button class="btn btn-ghost" onclick="closeInvoiceDetailModal()">Close Window</button>
     </div>
   </div>
 </div>
@@ -1319,12 +1320,18 @@ function renderAllInvoicesTable(invoices) {
     return;
   }
 
+  const isSuperAdmin = (currentRole === 'super_admin' || currentRole === 'admin');
+
   tbody.innerHTML = invoices.map((inv) => {
     let statusClass = 'pending';
     let statusLabel = 'Pending';
     if (inv.status === 'CONFIRMED') { statusClass = 'confirmed'; statusLabel = 'Confirmed (not gone out)'; }
     else if (inv.status === 'OUT_ON_HIRE') { statusClass = 'on_hire'; statusLabel = 'Out on hire'; }
     else if (inv.status === 'RETURNED') { statusClass = 'returned'; statusLabel = 'Returned'; }
+
+    const editBtn = isSuperAdmin
+      ? `<button class="btn btn-red" style="padding: 4px 10px; font-size: 11px; margin-right: 4px;" onclick="event.stopPropagation(); editInvoiceAsSuperAdmin('${inv.invoiceNo}')">✏️ Edit</button>`
+      : '';
 
     return `
       <tr class="clickable-row" onclick="openInvoiceDetailModal('${inv.invoiceNo}')">
@@ -1334,7 +1341,10 @@ function renderAllInvoicesTable(invoices) {
         <td class="td-address">${inv.address}</td>
         <td><strong style="color: var(--text);">₦ ${inv.totalCost.toLocaleString('en-NG', {minimumFractionDigits:2})}</strong></td>
         <td><span class="status-badge ${statusClass}">${statusLabel}</span></td>
-        <td style="text-align: center;"><button class="btn btn-ghost" style="padding: 4px 8px; font-size: 11px;">View ➔</button></td>
+        <td style="text-align: center; white-space: nowrap;">
+          ${editBtn}
+          <button class="btn btn-ghost" style="padding: 4px 8px; font-size: 11px;">View ➔</button>
+        </td>
       </tr>
     `;
   }).join('');
@@ -1364,6 +1374,72 @@ function filterAllInvoicesTable(query) {
 function filterInvoiceByStatus() {
   const q = document.getElementById('allInvoicesSearchInput').value;
   filterAllInvoicesTable(q);
+}
+
+/* ── SUPER ADMIN TRANSACTION EDITING FUNCTION ──────────────────────────── */
+function editInvoiceAsSuperAdmin(invoiceNo) {
+  if (currentRole !== 'super_admin' && currentRole !== 'admin') {
+    showToast('Super Admin permission required to edit transactions', 'error');
+    return;
+  }
+
+  const inv = MASTER_INVOICES.find(i => i.invoiceNo === invoiceNo);
+  if (!inv) {
+    showToast('Invoice not found', 'error');
+    return;
+  }
+
+  // Close detail modal if open
+  closeInvoiceDetailModal();
+
+  // Populate Invoicing Form fields
+  document.getElementById('badgeNo').textContent = inv.invoiceNo;
+  document.getElementById('fOrderNo').value = inv.invoiceNo;
+  document.getElementById('fCustomerName').value = inv.customerName || '';
+  document.getElementById('fPhone').value = inv.phone || '';
+  document.getElementById('fEmail').value = inv.email || '';
+  document.getElementById('fAddress').value = inv.address || '';
+  document.getElementById('fStartDate').value = inv.date || new Date().toISOString().split('T')[0];
+  document.getElementById('fEndDate').value = inv.date || new Date().toISOString().split('T')[0];
+  document.getElementById('fCaution').value = inv.caution || '';
+  document.getElementById('fTransport').value = inv.transport || '';
+
+  // Populate items table rows
+  const tbody = document.getElementById('itemsBody');
+  tbody.innerHTML = '';
+  rowId = 0;
+
+  if (Array.isArray(inv.items) && inv.items.length > 0) {
+    inv.items.forEach(item => {
+      rowId++;
+      const id = rowId;
+      const tr = document.createElement('tr');
+      tr.id = 'r' + id;
+      tr.innerHTML = `
+        <td><input type="number" min="0" class="qty" value="${item.qty}" placeholder="0" oninput="calcRow(${id})" /></td>
+        <td style="position:relative;">
+          <input type="text" class="desc" value="${item.desc.replace(/"/g, '&quot;')}" placeholder="Search item catalog..." oninput="searchCatalog(this, ${id})" autocomplete="off" />
+          <div class="autocomplete-results" id="ac-${id}"></div>
+        </td>
+        <td><input type="number" min="0" step="0.01" class="price" value="${item.price}" placeholder="0.00" oninput="calcRow(${id})" /></td>
+        <td><input type="number" class="charge" value="${item.total}" readonly placeholder="—" tabindex="-1" /></td>
+        <td><button class="btn btn-ghost" style="padding: 4px 8px; color: #ef4444;" onclick="delRow(${id})">✕</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  } else {
+    addRow(); addRow(); addRow();
+  }
+
+  recalc();
+
+  // Enable form editing
+  setFormReadOnly(false);
+
+  // Switch tab to Invoicing Form
+  switchTab('invoicing');
+
+  showToast(`Editing transaction ${inv.invoiceNo} — make your changes and click Save & Fulfill Invoice`, 'success');
 }
 
 /* ── SAVE & FULFILL INVOICE (PERSISTS PERMANENTLY TO LOCALSTORAGE & SUPABASE) ── */
@@ -1471,7 +1547,7 @@ function saveInvoice(status = 'CONFIRMED') {
   // Update All Invoices List Table immediately!
   renderAllInvoicesTable(MASTER_INVOICES);
 
-  showToast(`Invoice ${invoiceNo} saved permanently! Available across page refreshes.`, 'success');
+  showToast(`Invoice ${invoiceNo} saved & updated successfully!`, 'success');
 
   // Reset/Clear form for next transaction and auto-assign next serial invoice #
   createNewTransaction();
@@ -1489,6 +1565,9 @@ function openInvoiceDetailModal(invoiceNo) {
   document.getElementById('modalCustomerContact').textContent = `${inv.phone} · ${inv.email}`;
   document.getElementById('modalCustomerAddress').textContent = inv.address;
   document.getElementById('modalInvoiceStatusSelect').value = inv.status;
+
+  const isSuperAdmin = (currentRole === 'super_admin' || currentRole === 'admin');
+  document.getElementById('modalSuperAdminEditBtn').style.display = isSuperAdmin ? 'inline-flex' : 'none';
 
   // Render items
   const itemsBody = document.getElementById('modalInvoiceItemsBody');
