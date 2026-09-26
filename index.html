@@ -670,7 +670,8 @@
           </div>
           <div>
             <div class="summary-row"><span>Subtotal Rental Charge:</span> <strong id="sRental">₦ 0.00</strong></div>
-            <div class="summary-row"><span>Caution Deposit:</span> <strong id="sCaution">₦ 0.00</strong></div>
+            <div class="summary-row"><span>VAT (7.5%):</span> <strong id="sVat">₦ 0.00</strong></div>
+            <div class="summary-row"><span>Caution Deposit (Non-Taxable):</span> <strong id="sCaution">₦ 0.00</strong></div>
             <div class="summary-row"><span>Logistics & Transport:</span> <strong id="sTransport">₦ 0.00</strong></div>
             <div class="summary-row total"><span>Total Payable:</span> <strong id="sTotal">₦ 0.00</strong></div>
             <div style="margin-top: 8px; font-size: 11px; font-weight: 700; color: var(--muted);" id="sWords">Zero Naira only</div>
@@ -1003,7 +1004,8 @@
     <!-- Totals Summary -->
     <div class="summary-box" style="margin-top: 10px;">
       <div class="summary-row"><span>Subtotal Rental Charge:</span> <strong id="modalSubtotal">₦ 0.00</strong></div>
-      <div class="summary-row"><span>Refundable Caution Deposit:</span> <strong id="modalCaution">₦ 0.00</strong></div>
+      <div class="summary-row"><span>VAT (7.5%):</span> <strong id="modalVat">₦ 0.00</strong></div>
+      <div class="summary-row"><span>Refundable Caution Deposit (Non-Taxable):</span> <strong id="modalCaution">₦ 0.00</strong></div>
       <div class="summary-row"><span>Logistics & Transport:</span> <strong id="modalTransport">₦ 0.00</strong></div>
       <div class="summary-row total"><span>Total Payable:</span> <strong id="modalGrandTotal">₦ 0.00</strong></div>
     </div>
@@ -1087,8 +1089,9 @@ const INITIAL_MASTER_INVOICES = [
     phone: '+234 809 266 0766',
     email: 'amina@example.com',
     address: 'Plot 541A, 4TH Avenue, Gwarimpa Housing Estate, Gwarimpa, Abuja FCT',
-    totalCost: 185000,
+    totalCost: 195875,
     subtotal: 145000,
+    vat: 10875,
     caution: 25000,
     transport: 15000,
     status: 'CONFIRMED',
@@ -1108,8 +1111,9 @@ const INITIAL_MASTER_INVOICES = [
     phone: '+234 703 068 6500',
     email: 'okafor.catering@gmail.com',
     address: 'Suite 12, Transcorp Hilton Event Center, Aguiyi Ironsi Way, Maitama, Abuja FCT',
-    totalCost: 320000,
+    totalCost: 338750,
     subtotal: 250000,
+    vat: 18750,
     caution: 50000,
     transport: 20000,
     status: 'OUT_ON_HIRE',
@@ -1128,8 +1132,9 @@ const INITIAL_MASTER_INVOICES = [
     phone: '+234 802 334 9911',
     email: 'hadiza.usman@live.com',
     address: 'No 45 Kwame Nkrumah Crescent, Off Tiamiyu Savage, Asokoro, Abuja FCT',
-    totalCost: 95000,
+    totalCost: 100625,
     subtotal: 75000,
+    vat: 5625,
     caution: 15000,
     transport: 5000,
     status: 'RETURNED',
@@ -1147,8 +1152,9 @@ const INITIAL_MASTER_INVOICES = [
     phone: '+234 813 555 7788',
     email: 'events@kwara-group.ng',
     address: 'Phase 3 Banquet Hall, City Center, Central Business District, Abuja FCT',
-    totalCost: 210000,
+    totalCost: 222750,
     subtotal: 170000,
+    vat: 12750,
     caution: 30000,
     transport: 10000,
     status: 'PENDING',
@@ -1587,7 +1593,8 @@ function saveInvoice(status = 'CONFIRMED') {
     return;
   }
 
-  const grandTotal = subtotal + caution + transport;
+  const vat = subtotal * 0.075;
+  const grandTotal = subtotal + vat + caution + transport;
 
   const existingIdx = MASTER_INVOICES.findIndex(i => i.invoiceNo === invoiceNo);
   const newInvoiceObj = {
@@ -1599,6 +1606,7 @@ function saveInvoice(status = 'CONFIRMED') {
     address: address || 'Store Pickup / Local Delivery',
     totalCost: grandTotal,
     subtotal,
+    vat,
     caution,
     transport,
     status: existingIdx !== -1 ? MASTER_INVOICES[existingIdx].status : 'CONFIRMED',
@@ -1665,7 +1673,9 @@ function openInvoiceDetailModal(invoiceNo) {
     </tr>
   `).join('');
 
+  const vat = inv.vat !== undefined ? inv.vat : (inv.subtotal * 0.075);
   document.getElementById('modalSubtotal').textContent = '₦ ' + inv.subtotal.toLocaleString('en-NG', {minimumFractionDigits:2});
+  document.getElementById('modalVat').textContent = '₦ ' + vat.toLocaleString('en-NG', {minimumFractionDigits:2});
   document.getElementById('modalCaution').textContent = '₦ ' + inv.caution.toLocaleString('en-NG', {minimumFractionDigits:2});
   document.getElementById('modalTransport').textContent = '₦ ' + inv.transport.toLocaleString('en-NG', {minimumFractionDigits:2});
   document.getElementById('modalGrandTotal').textContent = '₦ ' + inv.totalCost.toLocaleString('en-NG', {minimumFractionDigits:2});
@@ -1751,11 +1761,13 @@ function recalc() {
   document.querySelectorAll('#itemsBody .charge').forEach(el => {
     rental += parseFloat(el.value) || 0;
   });
+  const vat       = rental * 0.075;
   const caution   = parseFloat(document.getElementById('fCaution').value)   || 0;
   const transport = parseFloat(document.getElementById('fTransport').value) || 0;
-  const grand     = rental + caution + transport;
+  const grand     = rental + vat + caution + transport;
 
   document.getElementById('sRental').textContent    = '₦ ' + fmt(rental);
+  document.getElementById('sVat').textContent       = '₦ ' + fmt(vat);
   document.getElementById('sCaution').textContent   = '₦ ' + fmt(caution);
   document.getElementById('sTransport').textContent = '₦ ' + fmt(transport);
   document.getElementById('sTotal').textContent     = '₦ ' + fmt(grand);
