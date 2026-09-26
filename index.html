@@ -205,7 +205,7 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    /* ── GENERAL SEARCH BAR ───────────────────────────────────────────── */
+    /* ── SEARCH INPUT ─────────────────────────────────────────────────── */
     .search-bar-container {
       background: #f8fafc;
       border: 1.5px solid var(--border);
@@ -283,7 +283,7 @@
       background: var(--red-light);
       border: 1.5px solid rgba(123, 21, 21, 0.2);
       border-radius: var(--radius-sm);
-      padding: 12px 20px;
+      padding: 10px 18px;
       text-align: center;
       min-width: 140px;
     }
@@ -295,7 +295,7 @@
 
     .order-badge {
       font-family: 'Outfit', sans-serif;
-      font-size: 24px; font-weight: 800; color: var(--red);
+      font-size: 22px; font-weight: 800; color: var(--red);
     }
 
     .section-title {
@@ -579,32 +579,26 @@
     <!-- =================================================================== -->
     <div id="tab-invoicing" class="tab-content active">
 
-      <!-- Dynamic Search Bar -->
-      <div class="search-bar-container">
-        <div class="search-input-wrapper">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="generalSearchInput" placeholder="Search Invoices & Transactions by Invoice #, Customer Name, Phone, Email, or Status..." oninput="handleGeneralSearch(this.value)">
-          <div class="autocomplete-results" id="generalSearchResults"></div>
-        </div>
-        <button class="btn btn-ghost" onclick="fetchNextOrderNo()">+ New Transaction</button>
-      </div>
-
       <!-- Read Only Lock Banner (For Fulfilled Transactions) -->
       <div id="readOnlyBanner" class="read-only-banner" style="display: none;">
         <span>🔒 READ ONLY MODE: This transaction is fulfilled/completed. Only the Super Admin can modify completed transactions.</span>
         <button id="btnUnlockSuperAdmin" class="btn btn-red" style="padding: 4px 12px; font-size: 11px;" onclick="enableSuperAdminEdit()">👑 Super Admin Unlock Edit</button>
       </div>
 
-      <!-- Form Title & Order No -->
+      <!-- Form Title & Order No Top Bar -->
       <div class="top-bar">
         <div class="form-title">
           <h2>Invoice & Rental Order</h2>
           <p>Create, manage, and process active rental transactions, invoices, and deposits.</p>
         </div>
-        <div class="order-no-box">
-          <label>Invoice No.</label>
-          <div class="order-badge" id="badgeNo">0001</div>
-          <input type="hidden" id="fOrderNo" value="0001">
+        
+        <div style="display: flex; gap: 12px; align-items: center;">
+          <button class="btn btn-ghost" style="padding: 10px 16px; border-color: var(--red); color: var(--red); font-weight: 800; font-size: 13px;" onclick="createNewTransaction()">➕ New Transaction</button>
+          <div class="order-no-box">
+            <label>Invoice No.</label>
+            <div class="order-badge" id="badgeNo">#INV-0005</div>
+            <input type="hidden" id="fOrderNo" value="#INV-0005">
+          </div>
         </div>
       </div>
 
@@ -1161,15 +1155,13 @@ const INVENTORY_CATALOG = [
   // Setup Role-based Tab Permissions
   setupTabPermissions();
 
-  // Populate starter item rows
-  if (document.querySelectorAll('#itemsBody tr').length === 0) {
-    addRow(); addRow(); addRow();
-  }
+  // Initialize Invoice Number serially
+  const nextNo = getNextSerialInvoiceNo();
+  document.getElementById('badgeNo').textContent = nextNo;
+  document.getElementById('fOrderNo').value = nextNo;
 
-  // Set default dates
-  const today = new Date().toISOString().split('T')[0];
-  document.getElementById('fStartDate').value = today;
-  document.getElementById('fEndDate').value = today;
+  // Clear & populate starter item rows
+  clearInvoiceForm();
 
   // Render All Invoices Table List
   renderAllInvoicesTable(MASTER_INVOICES);
@@ -1177,6 +1169,46 @@ const INVENTORY_CATALOG = [
   // Initialize Charts in Analysis Tab
   initCharts();
 })();
+
+/* ── SERIAL INVOICE NUMBER GENERATOR ──────────────────────────────────── */
+function getNextSerialInvoiceNo() {
+  let maxSeq = 0;
+  MASTER_INVOICES.forEach(inv => {
+    const match = inv.invoiceNo.match(/\d+/);
+    if (match) {
+      const num = parseInt(match[0], 10);
+      if (num > maxSeq) maxSeq = num;
+    }
+  });
+  const nextNum = maxSeq + 1;
+  return `#INV-${nextNum.toString().padStart(4, '0')}`;
+}
+
+function createNewTransaction() {
+  clearInvoiceForm();
+  const nextNo = getNextSerialInvoiceNo();
+  document.getElementById('badgeNo').textContent = nextNo;
+  document.getElementById('fOrderNo').value = nextNo;
+  showToast(`New transaction form initialized (${nextNo})`);
+}
+
+function clearInvoiceForm() {
+  document.getElementById('fCustomerName').value = '';
+  document.getElementById('fPhone').value = '';
+  document.getElementById('fEmail').value = '';
+  document.getElementById('fAddress').value = '';
+  document.getElementById('fCaution').value = '';
+  document.getElementById('fTransport').value = '';
+  
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('fStartDate').value = today;
+  document.getElementById('fEndDate').value = today;
+
+  const tbody = document.getElementById('itemsBody');
+  tbody.innerHTML = '';
+  addRow(); addRow(); addRow();
+  recalc();
+}
 
 /* ── ROLE-BASED TAB SWITCHING ──────────────────────────────────────────── */
 function setupTabPermissions() {
@@ -1221,7 +1253,7 @@ function renderAllInvoicesTable(invoices) {
     return;
   }
 
-  tbody.innerHTML = invoices.map((inv, idx) => {
+  tbody.innerHTML = invoices.map((inv) => {
     let statusClass = 'pending';
     let statusLabel = 'Pending';
     if (inv.status === 'CONFIRMED') { statusClass = 'confirmed'; statusLabel = 'Confirmed (not gone out)'; }
@@ -1263,9 +1295,98 @@ function filterAllInvoicesTable(query) {
   renderAllInvoicesTable(filtered);
 }
 
-function filterInvoiceByStatus(status) {
+function filterInvoiceByStatus() {
   const q = document.getElementById('allInvoicesSearchInput').value;
   filterAllInvoicesTable(q);
+}
+
+/* ── SAVE & FULFILL INVOICE (PERSISTS TO MASTER STORE & CLEARS FORM) ───── */
+function saveInvoice(status = 'CONFIRMED') {
+  const invoiceNo = document.getElementById('fOrderNo').value || getNextSerialInvoiceNo();
+  const customerName = document.getElementById('fCustomerName').value.trim();
+  const phone = document.getElementById('fPhone').value.trim();
+  const email = document.getElementById('fEmail').value.trim();
+  const address = document.getElementById('fAddress').value.trim();
+  const startDate = document.getElementById('fStartDate').value;
+  const caution = parseFloat(document.getElementById('fCaution').value) || 0;
+  const transport = parseFloat(document.getElementById('fTransport').value) || 0;
+
+  if (!customerName) {
+    showToast('Please enter customer name before saving', 'error');
+    document.getElementById('fCustomerName').focus();
+    return;
+  }
+
+  // Collect items
+  const items = [];
+  let subtotal = 0;
+  document.querySelectorAll('#itemsBody tr').forEach(row => {
+    const qty = parseFloat(row.querySelector('.qty').value) || 0;
+    const desc = row.querySelector('.desc').value.trim();
+    const price = parseFloat(row.querySelector('.price').value) || 0;
+    const total = qty * price;
+    if (qty > 0 && desc) {
+      items.push({ qty, desc, price, total });
+      subtotal += total;
+    }
+  });
+
+  if (items.length === 0) {
+    showToast('Please add at least one rental item', 'error');
+    return;
+  }
+
+  const grandTotal = subtotal + caution + transport;
+
+  // Create invoice object
+  const newInvoiceObj = {
+    invoiceNo,
+    date: startDate || new Date().toISOString().split('T')[0],
+    customerName,
+    phone: phone || 'N/A',
+    email: email || 'N/A',
+    address: address || 'Store Pickup / Local Delivery',
+    totalCost: grandTotal,
+    subtotal,
+    caution,
+    transport,
+    status: 'CONFIRMED',
+    items
+  };
+
+  // Upsert into MASTER_INVOICES array
+  const existingIdx = MASTER_INVOICES.findIndex(i => i.invoiceNo === invoiceNo);
+  if (existingIdx !== -1) {
+    MASTER_INVOICES[existingIdx] = newInvoiceObj;
+  } else {
+    MASTER_INVOICES.unshift(newInvoiceObj);
+  }
+
+  // Also add caution deposit to Deposits table if caution > 0
+  if (caution > 0) {
+    const depositsBody = document.querySelector('#depositsTable tbody');
+    if (depositsBody) {
+      const newTr = document.createElement('tr');
+      newTr.innerHTML = `
+        <td>${invoiceNo}</td>
+        <td>${customerName}</td>
+        <td>₦ ${caution.toLocaleString('en-NG', {minimumFractionDigits:2})}</td>
+        <td><span style="background: #fef3c7; color: #b45309; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px;">HELD</span></td>
+        <td>
+          <button class="btn btn-success deposit-payout-btn" onclick="openRefundModal('${invoiceNo}', '${customerName.replace(/'/g, "\\'")}', ${caution})">💳 Initiate Payout</button>
+        </td>
+      `;
+      depositsBody.prepend(newTr);
+    }
+  }
+
+  // Update All Invoices List Table immediately!
+  renderAllInvoicesTable(MASTER_INVOICES);
+
+  showToast(`Invoice ${invoiceNo} saved & fulfilled! Saved to All Invoices directory.`, 'success');
+
+  // Reset/Clear form for next transaction and auto-assign next serial invoice #
+  createNewTransaction();
 }
 
 /* ── CLICKABLE CONFIRMATION INVOICE DETAIL MODAL ───────────────────────── */
@@ -1452,7 +1573,6 @@ function handleLegacySubmit(e) {
 
 /* ── CHARTS & AI ASSISTANT ────────────────────────────────────────────── */
 function initCharts() {
-  // Revenue Chart
   const ctx1 = document.getElementById('revenueChart').getContext('2d');
   new Chart(ctx1, {
     type: 'line',
@@ -1469,7 +1589,6 @@ function initCharts() {
     }
   });
 
-  // Category Chart
   const ctx2 = document.getElementById('categoryChart').getContext('2d');
   new Chart(ctx2, {
     type: 'doughnut',
@@ -1496,19 +1615,8 @@ function runAiAnalysis(type) {
   }
 }
 
-function fetchNextOrderNo() {
-  const next = Math.floor(1000 + Math.random() * 9000).toString();
-  document.getElementById('badgeNo').textContent = next;
-  document.getElementById('fOrderNo').value = next;
-  showToast('New transaction created #' + next);
-}
-
 function printInvoice() {
   window.print();
-}
-
-function saveInvoice(status) {
-  showToast('Invoice #' + document.getElementById('fOrderNo').value + ' saved & fulfilled!', 'success');
 }
 
 function showToast(msg, type = '') {
@@ -1527,7 +1635,7 @@ function numWords(n) {
     if (num < 20) return ones[num] + ' ';
     if (num < 100) return tens[Math.floor(num/10)] + (num%10 ? '-' + ones[num%10] : '') + ' ';
     if (num < 1e3) return ones[Math.floor(num/100)] + ' Hundred ' + cvt(num%100);
-    if (num < 1e6) return cvt(Math.floor(num/1e3)) + 'Thousand ' + cvt(num%1e3);
+    if (num < 1e6) return cvt(Math.floor(num/1e3)) + 'Thousand ' + cvt(num%1e6);
     return cvt(Math.floor(num/1e6)) + 'Million ' + cvt(num%1e6);
   }
   return cvt(n).trim();
