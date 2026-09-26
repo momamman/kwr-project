@@ -1044,8 +1044,8 @@ let currentRole = 'user';
 let rowId = 0;
 let activeSelectedInvoice = null;
 
-// Master Invoices Database Store
-const MASTER_INVOICES = [
+// Master Invoices Database Store (Initial Baseline Records)
+const INITIAL_MASTER_INVOICES = [
   {
     invoiceNo: '#INV-0001',
     date: '2026-09-26',
@@ -1123,6 +1123,8 @@ const MASTER_INVOICES = [
   }
 ];
 
+let MASTER_INVOICES = [...INITIAL_MASTER_INVOICES];
+
 // Master Catalog Items for Autocomplete
 const INVENTORY_CATALOG = [
   { desc: 'Chafing Dish Single (Roll Top)', price: 3500 },
@@ -1134,6 +1136,65 @@ const INVENTORY_CATALOG = [
   { desc: 'Serving Tray Oval (Stainless)', price: 1500 },
   { desc: 'Juice Dispenser (12 Litre)', price: 5000 }
 ];
+
+/* ── PERSISTENCE HELPERS (LOCALSTORAGE & SUPABASE) ─────────────────────── */
+function loadMasterInvoices() {
+  const localSaved = localStorage.getItem('kwr_saved_invoices');
+  if (localSaved) {
+    try {
+      const parsed = JSON.parse(localSaved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        parsed.forEach(inv => {
+          const idx = MASTER_INVOICES.findIndex(i => i.invoiceNo === inv.invoiceNo);
+          if (idx !== -1) MASTER_INVOICES[idx] = inv;
+          else MASTER_INVOICES.unshift(inv);
+        });
+      }
+    } catch (e) {
+      console.error('Error reading localStorage invoices:', e);
+    }
+  }
+}
+
+function persistMasterInvoices() {
+  try {
+    localStorage.setItem('kwr_saved_invoices', JSON.stringify(MASTER_INVOICES));
+  } catch (e) {
+    console.error('Error saving invoices to localStorage:', e);
+  }
+}
+
+async function fetchInvoicesFromSupabase() {
+  try {
+    const { data, error } = await db.from('orders').select('*');
+    if (data && data.length > 0) {
+      data.forEach(order => {
+        const invNo = order.order_no ? (order.order_no.startsWith('#') ? order.order_no : `#INV-${order.order_no.padStart(4, '0')}`) : `#INV-0000`;
+        const exists = MASTER_INVOICES.find(i => i.invoiceNo === invNo);
+        if (!exists) {
+          MASTER_INVOICES.unshift({
+            invoiceNo: invNo,
+            date: order.order_date || (order.created_at ? order.created_at.split('T')[0] : '2026-09-26'),
+            customerName: order.cust_name || order.placed_by || 'Customer',
+            phone: order.telephone || 'N/A',
+            email: order.email || 'N/A',
+            address: order.address || 'Local Delivery',
+            totalCost: order.grand_total || order.rental_total || 0,
+            subtotal: order.rental_total || 0,
+            caution: order.caution_dep || 0,
+            transport: order.transport || 0,
+            status: 'CONFIRMED',
+            items: Array.isArray(order.items) ? order.items : []
+          });
+        }
+      });
+      persistMasterInvoices();
+      renderAllInvoicesTable(MASTER_INVOICES);
+    }
+  } catch (e) {
+    console.log('Supabase sync note:', e);
+  }
+}
 
 /* ── INITIALIZATION & AUTH ────────────────────────────────────────────── */
 (async function init() {
@@ -1154,6 +1215,12 @@ const INVENTORY_CATALOG = [
 
   // Setup Role-based Tab Permissions
   setupTabPermissions();
+
+  // Load persistent saved invoices from localStorage
+  loadMasterInvoices();
+
+  // Fetch saved orders from Supabase DB asynchronously
+  fetchInvoicesFromSupabase();
 
   // Initialize Invoice Number serially
   const nextNo = getNextSerialInvoiceNo();
@@ -1225,7 +1292,6 @@ function setupTabPermissions() {
     }
   });
 
-  // Switch to first allowed tab
   if (auth.canAccessTab(currentRole, 'invoicing')) switchTab('invoicing');
   else if (auth.canAccessTab(currentRole, 'data_entry')) switchTab('data-entry');
   else if (auth.canAccessTab(currentRole, 'analysis')) switchTab('analysis');
@@ -1300,7 +1366,7 @@ function filterInvoiceByStatus() {
   filterAllInvoicesTable(q);
 }
 
-/* ── SAVE & FULFILL INVOICE (PERSISTS TO MASTER STORE & CLEARS FORM) ───── */
+/* ── SAVE & FULFILL INVOICE (PERSISTS PERMANENTLY TO LOCALSTORAGE & SUPABASE) ── */
 function saveInvoice(status = 'CONFIRMED') {
   const invoiceNo = document.getElementById('fOrderNo').value || getNextSerialInvoiceNo();
   const customerName = document.getElementById('fCustomerName').value.trim();
@@ -1362,6 +1428,28 @@ function saveInvoice(status = 'CONFIRMED') {
     MASTER_INVOICES.unshift(newInvoiceObj);
   }
 
+  // PERSIST PERMANENTLY TO LOCALSTORAGE
+  persistMasterInvoices();
+
+  // Async Insert/Sync to Supabase database
+  try {
+    db.from('orders').insert({
+      order_no: invoiceNo.replace('#INV-', ''),
+      order_date: startDate || new Date().toISOString().split('T')[0],
+      cust_name: customerName,
+      telephone: phone,
+      email: email,
+      address: address,
+      rental_total: subtotal,
+      caution_dep: caution,
+      transport: transport,
+      grand_total: grandTotal,
+      items: items
+    }).then(({ data, error }) => {
+      if (error) console.log('Supabase sync note:', error.message);
+    });
+  } catch (e) {}
+
   // Also add caution deposit to Deposits table if caution > 0
   if (caution > 0) {
     const depositsBody = document.querySelector('#depositsTable tbody');
@@ -1383,7 +1471,7 @@ function saveInvoice(status = 'CONFIRMED') {
   // Update All Invoices List Table immediately!
   renderAllInvoicesTable(MASTER_INVOICES);
 
-  showToast(`Invoice ${invoiceNo} saved & fulfilled! Saved to All Invoices directory.`, 'success');
+  showToast(`Invoice ${invoiceNo} saved permanently! Available across page refreshes.`, 'success');
 
   // Reset/Clear form for next transaction and auto-assign next serial invoice #
   createNewTransaction();
@@ -1428,6 +1516,7 @@ function closeInvoiceDetailModal() {
 function updateInvoiceStatusFromModal(newStatus) {
   if (!activeSelectedInvoice) return;
   activeSelectedInvoice.status = newStatus;
+  persistMasterInvoices();
   renderAllInvoicesTable(MASTER_INVOICES);
   showToast(`Updated ${activeSelectedInvoice.invoiceNo} status to ${newStatus}`, 'success');
 }
