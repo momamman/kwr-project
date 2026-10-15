@@ -1130,6 +1130,7 @@
 
         <!-- Transaction Actions -->
         <div style="margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end;">
+          <button type="button" class="btn btn-ghost" id="btnClearInvoice" onclick="handleClearInvoicing()">🗑️ Clear</button>
           <button class="btn btn-ghost" onclick="printInvoice()">🖨️ Print Invoice</button>
           <button class="btn btn-red" id="btnSaveInvoice" onclick="saveInvoice('fulfilled')">💾 Save & Fulfill
             Invoice</button>
@@ -1310,6 +1311,7 @@
 
         <!-- Ingestion Actions -->
         <div style="margin-top: 28px; display: flex; gap: 12px; justify-content: flex-end;">
+          <button type="button" class="btn btn-ghost" id="btnClearLegacy" onclick="handleClearLegacy()">🗑️ Clear</button>
           <button class="btn btn-ghost" onclick="printLegacyRecord()">🖨️ Print Legacy Record</button>
           <button class="btn btn-forest" id="btnSaveLegacy" onclick="saveLegacyInvoice()">📥 Ingest Legacy Record to DB</button>
         </div>
@@ -2072,22 +2074,42 @@
       showToast(`New transaction form initialized (${nextNo})`);
     }
 
+    function handleClearInvoicing() {
+      clearInvoiceForm();
+      const nextNo = getNextSerialInvoiceNo();
+      const badge = document.getElementById('badgeNo');
+      const hidden = document.getElementById('fOrderNo');
+      if (badge) badge.textContent = nextNo;
+      if (hidden) hidden.value = nextNo;
+      showToast('All invoicing fields cleared');
+    }
+
     function clearInvoiceForm() {
-      document.getElementById('fCustomerName').value = '';
-      document.getElementById('fPhone').value = '';
-      document.getElementById('fEmail').value = '';
-      document.getElementById('fAddress').value = '';
-      document.getElementById('fCaution').value = '';
-      document.getElementById('fTransport').value = '';
+      if (document.getElementById('fCustomerName')) document.getElementById('fCustomerName').value = '';
+      if (document.getElementById('fPhone')) document.getElementById('fPhone').value = '';
+      if (document.getElementById('fEmail')) document.getElementById('fEmail').value = '';
+      if (document.getElementById('fAddress')) document.getElementById('fAddress').value = '';
+      if (document.getElementById('fCaution')) document.getElementById('fCaution').value = '';
+      if (document.getElementById('fTransport')) document.getElementById('fTransport').value = '';
+
+      const custRes = document.getElementById('customerResults');
+      if (custRes) {
+        custRes.innerHTML = '';
+        custRes.classList.remove('active');
+      }
 
       const today = new Date().toISOString().split('T')[0];
-      document.getElementById('fStartDate').value = today;
-      document.getElementById('fEndDate').value = today;
+      if (document.getElementById('fStartDate')) document.getElementById('fStartDate').value = today;
+      if (document.getElementById('fEndDate')) document.getElementById('fEndDate').value = today;
 
       const tbody = document.getElementById('itemsBody');
-      tbody.innerHTML = '';
-      addRow(); addRow(); addRow();
+      if (tbody) {
+        tbody.innerHTML = '';
+        rowId = 0;
+        addRow(); addRow(); addRow();
+      }
       recalc();
+      if (typeof setFormReadOnly === 'function') setFormReadOnly(false);
     }
 
     /* ── ROLE-BASED TAB SWITCHING ──────────────────────────────────────────── */
@@ -2646,6 +2668,11 @@
       if (hidden) hidden.value = nextNo;
     }
 
+    function handleClearLegacy() {
+      createNewLegacyEntry();
+      showToast('All legacy data entry fields cleared');
+    }
+
     function clearLegacyForm() {
       if (document.getElementById('legCustomerName')) document.getElementById('legCustomerName').value = '';
       if (document.getElementById('legPhone')) document.getElementById('legPhone').value = '';
@@ -2653,6 +2680,12 @@
       if (document.getElementById('legAddress')) document.getElementById('legAddress').value = '';
       if (document.getElementById('legCaution')) document.getElementById('legCaution').value = '';
       if (document.getElementById('legTransport')) document.getElementById('legTransport').value = '';
+
+      const legRes = document.getElementById('legCustomerResults');
+      if (legRes) {
+        legRes.innerHTML = '';
+        legRes.classList.remove('active');
+      }
 
       const today = new Date().toISOString().split('T')[0];
       if (document.getElementById('legDate')) document.getElementById('legDate').value = today;
