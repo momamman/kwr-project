@@ -534,6 +534,75 @@
       color: var(--muted);
     }
 
+    /* Legacy vs New Order Badges */
+    .badge-legacy {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #E8F4EE;
+      color: #2F6B4F;
+      border: 1px solid #C4D9CD;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2.5px 7px;
+      border-radius: 4px;
+      letter-spacing: 0.4px;
+    }
+
+    .badge-new {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #FDF2F7;
+      color: var(--berry);
+      border: 1px solid #F5C6DF;
+      font-size: 10px;
+      font-weight: 800;
+      padding: 2.5px 7px;
+      border-radius: 4px;
+      letter-spacing: 0.4px;
+    }
+
+    /* Receipt Upload Area */
+    .legacy-dropzone {
+      border: 2px dashed #CBD5E1;
+      border-radius: 12px;
+      padding: 24px 20px;
+      text-align: center;
+      background: #F8FAFC;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .legacy-dropzone:hover, .legacy-dropzone.drag-over {
+      border-color: var(--forest);
+      background: #F0FDF4;
+    }
+
+    .receipt-preview-card {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      background: #FFFFFF;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-top: 10px;
+    }
+
+    .receipt-preview-card img {
+      width: 56px;
+      height: 56px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+    }
+
     /* ── TABLES ───────────────────────────────────────────────────────── */
     table {
       width: 100%;
@@ -1096,7 +1165,9 @@
           <select id="invoiceStatusFilter"
             style="border: 1.5px solid var(--border); padding: 11px 14px; border-radius: 8px; font-weight: 700; font-size: 13px;"
             onchange="filterInvoiceByStatus(this.value)">
-            <option value="ALL">All Statuses</option>
+            <option value="ALL">All Transactions</option>
+            <option value="NEW">⚡ New / Active Orders Only</option>
+            <option value="LEGACY">📜 Legacy Ingested Records Only</option>
             <option value="CONFIRMED">Confirmed (not gone out)</option>
             <option value="OUT_ON_HIRE">Out on hire</option>
             <option value="RETURNED">Returned</option>
@@ -1130,85 +1201,142 @@
         <div class="top-bar">
           <div class="form-title">
             <h2>📝 Data Entry & Legacy Ingestion</h2>
-            <p>Populate legacy paper transaction records into the database to build Customer & Inventory master files.
-            </p>
+            <p>Backfill historical paper transaction receipts into the database with automatic customer indexing and inventory tracking.</p>
+          </div>
+
+          <div style="display: flex; gap: 12px; align-items: center;">
+            <button class="btn btn-ghost"
+              style="padding: 10px 16px; border-color: var(--forest); color: var(--forest-dark); font-weight: 800; font-size: 13px;"
+              onclick="createNewLegacyEntry()">➕ New Legacy Entry</button>
+            <div class="order-no-box" style="border-color: #A4C4B5;">
+              <label style="color: var(--forest);">Legacy Receipt / Ref #</label>
+              <div class="order-badge" id="legBadgeNo" style="color: var(--forest-dark); border-color: #A4C4B5; background: var(--forest-light);">#LEG-0002</div>
+              <input type="hidden" id="legRefNo" value="#LEG-0002">
+            </div>
           </div>
         </div>
 
         <div
           style="background: var(--forest-light); border: 1.5px solid #A4C4B5; border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; color: var(--forest-dark); font-size: 13px;">
-          💡 <strong>Legacy Ingestion Mode:</strong> Use this form to backfill historical physical receipts. Saving here
-          populates both the <strong>Customer Database</strong> and <strong>Inventory Master Catalog</strong>.
+          💡 <strong>Legacy Ingestion Mode:</strong> Enter historical receipts below. Saving automatically indexes the client in the <strong>Customer Table</strong>, updates the <strong>Inventory Catalog</strong>, and tags the transaction with <strong>is_legacy = TRUE</strong> in the database orders table.
         </div>
 
-        <form id="legacyDataForm" onsubmit="handleLegacySubmit(event)">
-          <div class="grid-3">
-            <div class="field">
-              <label>Legacy Receipt / Ref #</label>
-              <input type="text" id="legRef" required placeholder="LEG-2024-001">
-            </div>
-            <div class="field">
-              <label>Historical Transaction Date</label>
-              <input type="date" id="legDate" required>
-            </div>
-            <div class="field">
-              <label>Customer Full Name</label>
-              <input type="text" id="legCustomerName" required placeholder="John Doe">
+        <!-- Section 1: Customer Details with Real-time Autocomplete -->
+        <div class="section-title">👤 Customer Information (Auto-Indexed to Database)</div>
+        <div class="grid-3">
+          <div class="field">
+            <label>Customer Name / Company</label>
+            <input type="text" id="legCustomerName" placeholder="Type to search or enter customer..."
+              oninput="autocompleteCustomer(this.value, 'legacy')" autocomplete="off" required>
+            <div class="autocomplete-results" id="legCustomerResults"></div>
+          </div>
+          <div class="field">
+            <label>Customer Telephone</label>
+            <input type="text" id="legPhone" placeholder="+234 800 000 0000">
+          </div>
+          <div class="field">
+            <label>Customer Email</label>
+            <input type="email" id="legEmail" placeholder="customer@example.com">
+          </div>
+        </div>
+
+        <div class="grid-2">
+          <div class="field">
+            <label>Delivery / Event Venue Address</label>
+            <input type="text" id="legAddress" placeholder="Physical receipt venue or event location">
+          </div>
+          <div class="field">
+            <label>Historical Rental Period (Start & End Date)</label>
+            <div style="display: flex; gap: 8px;">
+              <input type="date" id="legDate" style="flex:1;" required>
+              <input type="date" id="legEndDate" style="flex:1;">
             </div>
           </div>
+        </div>
 
-          <div class="grid-3">
-            <div class="field">
-              <label>Customer Telephone</label>
-              <input type="text" id="legPhone" required placeholder="+234 800 000 0000">
+        <!-- Section 2: Rental Items & Inventory Builder -->
+        <div class="section-title">📦 Rental Items & Inventory Builder (Legacy Breakdown)</div>
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 80px;">Qty</th>
+              <th>Item Description (Real-time Inventory Search)</th>
+              <th style="width: 140px;">Daily Rate (₦)</th>
+              <th style="width: 140px;">Charge (₦)</th>
+              <th style="width: 50px;"></th>
+            </tr>
+          </thead>
+          <tbody id="legItemsBody">
+            <!-- Dynamic Legacy Item Rows -->
+          </tbody>
+        </table>
+        <button class="btn btn-ghost" onclick="addLegacyRow()">+ Add Item Row</button>
+
+        <!-- Section 3: Financial Totals Summary -->
+        <div class="summary-box">
+          <div class="grid-2">
+            <div>
+              <div class="field" style="margin-bottom: 12px;">
+                <label>Caution Deposit Ingested (₦)</label>
+                <input type="number" id="legCaution" placeholder="0.00" oninput="recalcLegacy()">
+              </div>
+              <div class="field">
+                <label>Logistics / Transport Charge (₦)</label>
+                <input type="number" id="legTransport" placeholder="0.00" oninput="recalcLegacy()">
+              </div>
             </div>
-            <div class="field">
-              <label>Customer Email</label>
-              <input type="email" id="legEmail" placeholder="john@example.com">
-            </div>
-            <div class="field">
-              <label>Caution Deposit Ingested (₦)</label>
-              <input type="number" id="legCaution" placeholder="10000">
+            <div>
+              <div class="summary-row"><span>Subtotal Rental Charge:</span> <strong id="legRental">₦ 0.00</strong></div>
+              <div class="summary-row"><span>VAT (7.5%):</span> <strong id="legVat">₦ 0.00</strong></div>
+              <div class="summary-row"><span>Caution Deposit (Non-Taxable):</span> <strong id="legCautionSummary">₦ 0.00</strong></div>
+              <div class="summary-row"><span>Logistics & Transport:</span> <strong id="legTransportSummary">₦ 0.00</strong></div>
+              <div class="summary-row total"><span>Total Historical Payable:</span> <strong id="legTotal">₦ 0.00</strong></div>
+              <div style="margin-top: 8px; font-size: 11px; font-weight: 700; color: var(--muted);" id="legWords">Zero Naira only</div>
             </div>
           </div>
+        </div>
 
-          <div class="field" style="margin-bottom: 20px;">
-            <label>Items List & Quantities (Legacy Breakdown)</label>
-            <textarea id="legItems" rows="3"
-              placeholder="e.g. 50x Chafing Dishes, 200x Dinner Plates, 100x Wine Glasses"></textarea>
+        <!-- Section 4: Original Physical Receipt Attachment -->
+        <div style="margin-top: 24px;">
+          <div class="section-title">📎 Physical Receipt Scan / Photo Attachment (Optional)</div>
+          <div class="legacy-dropzone" id="legacyDropzone" onclick="document.getElementById('legReceiptFile').click()">
+            <div style="font-size: 28px;">📄</div>
+            <div style="font-weight: 700; font-size: 13.5px; color: var(--text);">Click or drag & drop physical receipt image here</div>
+            <div style="font-size: 11.5px; color: var(--muted);">Supports PNG, JPG, JPEG, WEBP scanned paper receipts</div>
+            <input type="file" id="legReceiptFile" accept="image/*" style="display: none;" onchange="handleLegacyReceiptFile(this.files)">
           </div>
+          <div id="legacyReceiptPreview"></div>
+        </div>
 
-          <!-- Receipt Image Upload -->
-          <div class="field" style="margin-bottom: 24px;">
-            <label>Original Receipt Upload (Image / Scan)</label>
-            <input type="file" id="legFile" accept="image/*" style="padding: 6px;">
+        <!-- Ingestion Actions -->
+        <div style="margin-top: 28px; display: flex; gap: 12px; justify-content: flex-end;">
+          <button class="btn btn-ghost" onclick="printLegacyRecord()">🖨️ Print Legacy Record</button>
+          <button class="btn btn-forest" id="btnSaveLegacy" onclick="saveLegacyInvoice()">📥 Ingest Legacy Record to DB</button>
+        </div>
+
+        <!-- Section 5: Recently Ingested Legacy Logs -->
+        <div style="margin-top: 48px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
+            <div class="section-title" style="margin-bottom: 0;">📋 Recently Ingested Legacy Records (Live Synced to DB)</div>
+            <div class="search-input-wrapper" style="max-width: 300px;">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="legacySearchInput" placeholder="Filter legacy records..." oninput="filterLegacyLogsTable(this.value)">
+            </div>
           </div>
-
-          <button type="submit" class="btn btn-red">📥 Ingest Legacy Record to DB</button>
-        </form>
-
-        <div style="margin-top: 40px;">
-          <div class="section-title">📋 Recently Ingested Legacy Logs</div>
           <table>
             <thead>
               <tr>
-                <th>Ref #</th>
-                <th>Date</th>
-                <th>Customer</th>
-                <th>Items Summary</th>
-                <th>Status</th>
+                <th style="width: 120px;">Ref #</th>
+                <th style="width: 110px;">Date</th>
+                <th>Customer Name</th>
+                <th>Items Breakdown Summary</th>
+                <th style="width: 130px;">Total Cost</th>
+                <th style="width: 120px;">Order Type</th>
+                <th style="width: 100px; text-align: center;">Actions</th>
               </tr>
             </thead>
             <tbody id="legacyLogsBody">
-              <tr>
-                <td>LEG-2024-001</td>
-                <td>2024-11-15</td>
-                <td>Alhaji Garba</td>
-                <td>100x Plates, 20x Chafing Dishes</td>
-                <td><span
-                    style="background: #d1fae5; color: #047857; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 11px;">INGESTED</span>
-                </td>
-              </tr>
+              <!-- Dynamically populated -->
             </tbody>
           </table>
         </div>
@@ -1358,9 +1486,12 @@
       <div
         style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--red); padding-bottom: 16px; margin-bottom: 20px;">
         <div>
-          <h2 style="font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 800; color: var(--red);"
-            id="modalInvoiceNo">INVOICE #INV-0001</h2>
-          <p style="font-size: 12px; color: var(--muted);" id="modalInvoiceDate">Issued: 2026-09-26</p>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <h2 style="font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 800; color: var(--red);"
+              id="modalInvoiceNo">INVOICE #INV-0001</h2>
+            <span id="modalInvoiceTypeBadge"></span>
+          </div>
+          <p style="font-size: 12px; color: var(--muted); margin-top: 2px;" id="modalInvoiceDate">Issued: 2026-09-26</p>
         </div>
         <div style="display: flex; align-items: center; gap: 10px;">
           <select id="modalInvoiceStatusSelect"
@@ -1495,7 +1626,10 @@
     let currentUser = null;
     let currentRole = 'user';
     let rowId = 0;
+    let legacyRowId = 0;
     let activeSelectedInvoice = null;
+    let MASTER_CUSTOMERS = [];
+    let selectedLegacyFile = null;
 
     // Master Invoices Database Store (Initial Baseline Records)
     const INITIAL_MASTER_INVOICES = [
@@ -1513,6 +1647,7 @@
         transport: 15000,
         status: 'CONFIRMED',
         depositStatus: 'HELD',
+        isLegacy: false,
         items: [
           { qty: 20, desc: 'Chafing Dish Single (Roll Top)', price: 3500, total: 70000 },
           { qty: 200, desc: 'Dinner Plate Porcelain (White)', price: 150, total: 30000 },
@@ -1535,6 +1670,7 @@
         transport: 20000,
         status: 'OUT_ON_HIRE',
         depositStatus: 'REFUNDED',
+        isLegacy: false,
         items: [
           { qty: 40, desc: 'Chafing Dish Double (Standard)', price: 3000, total: 120000 },
           { qty: 500, desc: 'Dinner Plate Porcelain (White)', price: 150, total: 75000 },
@@ -1556,6 +1692,7 @@
         transport: 5000,
         status: 'RETURNED',
         depositStatus: 'HELD',
+        isLegacy: false,
         items: [
           { qty: 10, desc: 'Chafing Dish Single (Roll Top)', price: 3500, total: 35000 },
           { qty: 200, desc: 'Wine Glass (Stemmed)', price: 120, total: 24000 },
@@ -1576,10 +1713,32 @@
         transport: 10000,
         status: 'PENDING',
         depositStatus: 'HELD',
+        isLegacy: false,
         items: [
           { qty: 30, desc: 'Chafing Dish Single (Roll Top)', price: 3500, total: 105000 },
           { qty: 300, desc: 'Dinner Plate Porcelain (White)', price: 150, total: 45000 },
           { qty: 200, desc: 'Highball Glass (Cocktail)', price: 100, total: 20000 }
+        ]
+      },
+      {
+        invoiceNo: '#LEG-0001',
+        date: '2025-11-15',
+        customerName: 'Alhaji Garba Global Ent',
+        phone: '+234 802 555 4321',
+        email: 'garba.events@yahoo.com',
+        address: 'Old Secretariat Road, Area 1, Garki, Abuja FCT',
+        totalCost: 107500,
+        subtotal: 100000,
+        vat: 7500,
+        caution: 0,
+        transport: 0,
+        status: 'RETURNED',
+        depositStatus: 'N/A',
+        isLegacy: true,
+        items: [
+          { qty: 20, desc: 'Chafing Dish Double (Standard)', price: 3000, total: 60000 },
+          { qty: 200, desc: 'Dinner Plate Porcelain (White)', price: 150, total: 30000 },
+          { qty: 100, desc: 'Highball Glass (Cocktail)', price: 100, total: 10000 }
         ]
       }
     ];
@@ -1625,12 +1784,191 @@
       }
     }
 
+    async function fetchCustomersFromSupabase() {
+      try {
+        const { data, error } = await db.from('customers').select('*');
+        if (data && data.length > 0) {
+          MASTER_CUSTOMERS = data;
+        }
+      } catch (e) {
+        console.log('Customers fetch note:', e);
+      }
+
+      // Supplement from existing MASTER_INVOICES so autocomplete is always rich
+      MASTER_INVOICES.forEach(inv => {
+        if (inv.customerName && !MASTER_CUSTOMERS.some(c => c.name && c.name.toLowerCase() === inv.customerName.toLowerCase())) {
+          MASTER_CUSTOMERS.push({
+            name: inv.customerName,
+            telephone: inv.phone && inv.phone !== 'N/A' ? inv.phone : '',
+            email: inv.email && inv.email !== 'N/A' ? inv.email : '',
+            address: inv.address && inv.address !== 'Store Pickup / Local Delivery' ? inv.address : ''
+          });
+        }
+      });
+    }
+
+    /* ── CUSTOMER AUTOCOMPLETE & DB SYNC ─────────────────────────────────── */
+    function autocompleteCustomer(val, context = 'invoicing') {
+      const query = (val || '').toLowerCase().trim();
+      const resultsEl = document.getElementById(context === 'legacy' ? 'legCustomerResults' : 'customerResults');
+      if (!resultsEl) return;
+
+      if (!query) {
+        resultsEl.style.display = 'none';
+        resultsEl.innerHTML = '';
+        return;
+      }
+
+      const matches = MASTER_CUSTOMERS.filter(c =>
+        (c.name && c.name.toLowerCase().includes(query)) ||
+        (c.telephone && c.telephone.toLowerCase().includes(query)) ||
+        (c.email && c.email.toLowerCase().includes(query))
+      ).slice(0, 8);
+
+      if (matches.length === 0) {
+        resultsEl.innerHTML = `
+          <div style="padding: 10px 14px; font-size: 12px; color: var(--muted); font-style: italic;">
+            New customer profile — will be auto-saved to Customer Database on submit.
+          </div>
+        `;
+        resultsEl.style.display = 'block';
+        return;
+      }
+
+      resultsEl.innerHTML = matches.map((c, idx) => `
+        <div class="autocomplete-item" onclick="selectCustomer(${idx}, '${context}')">
+          <div class="name">👤 ${c.name}</div>
+          <div class="sub">📞 ${c.telephone || 'No phone'} · ✉️ ${c.email || 'No email'} · 📍 ${c.address ? c.address.slice(0, 32) + '...' : 'No address'}</div>
+        </div>
+      `).join('');
+      resultsEl.style.display = 'block';
+      resultsEl._activeMatches = matches;
+    }
+
+    function selectCustomer(idx, context = 'invoicing') {
+      const resultsEl = document.getElementById(context === 'legacy' ? 'legCustomerResults' : 'customerResults');
+      const matches = resultsEl?._activeMatches || [];
+      const cust = matches[idx];
+      if (!cust) return;
+
+      if (context === 'legacy') {
+        document.getElementById('legCustomerName').value = cust.name || '';
+        if (document.getElementById('legPhone')) document.getElementById('legPhone').value = cust.telephone || '';
+        if (document.getElementById('legEmail')) document.getElementById('legEmail').value = cust.email || '';
+        if (document.getElementById('legAddress')) document.getElementById('legAddress').value = cust.address || '';
+      } else {
+        document.getElementById('fCustomerName').value = cust.name || '';
+        document.getElementById('fPhone').value = cust.telephone || '';
+        document.getElementById('fEmail').value = cust.email || '';
+        document.getElementById('fAddress').value = cust.address || '';
+      }
+
+      resultsEl.style.display = 'none';
+      showToast(`Selected customer "${cust.name}"`, 'success');
+    }
+
+    // Dismiss autocomplete dropdowns on outside click
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('#fCustomerName') && !e.target.closest('#customerResults')) {
+        const el = document.getElementById('customerResults');
+        if (el) el.style.display = 'none';
+      }
+      if (!e.target.closest('#legCustomerName') && !e.target.closest('#legCustomerResults')) {
+        const el = document.getElementById('legCustomerResults');
+        if (el) el.style.display = 'none';
+      }
+    });
+
+    async function saveCustomerToDb(cust) {
+      if (!cust || !cust.name || !cust.name.trim()) return null;
+      const cleanName = cust.name.trim();
+      try {
+        const { data: existing } = await db.from('customers')
+          .select('id, name, telephone, email, address')
+          .ilike('name', cleanName)
+          .limit(1);
+
+        if (existing && existing.length > 0) {
+          const existingCust = existing[0];
+          const updatePayload = {};
+          if (cust.telephone && !existingCust.telephone) updatePayload.telephone = cust.telephone;
+          if (cust.email && !existingCust.email) updatePayload.email = cust.email;
+          if (cust.address && !existingCust.address) updatePayload.address = cust.address;
+          if (Object.keys(updatePayload).length > 0) {
+            await db.from('customers').update(updatePayload).eq('id', existingCust.id);
+          }
+          return existingCust.id;
+        } else {
+          const { data, error } = await db.from('customers').insert({
+            name: cleanName,
+            telephone: cust.telephone || '',
+            email: cust.email || '',
+            address: cust.address || '',
+            notes: cust.notes || 'Ingested via KWR Portal'
+          }).select();
+
+          if (error) {
+            console.warn('Customer DB insert note:', error.message);
+          } else if (data && data[0]) {
+            MASTER_CUSTOMERS.unshift(data[0]);
+            return data[0].id;
+          }
+        }
+      } catch (err) {
+        console.warn('saveCustomerToDb error:', err);
+      }
+
+      // Local fallback
+      if (!MASTER_CUSTOMERS.some(c => c.name && c.name.toLowerCase() === cleanName.toLowerCase())) {
+        MASTER_CUSTOMERS.unshift({
+          name: cleanName,
+          telephone: cust.telephone || '',
+          email: cust.email || '',
+          address: cust.address || ''
+        });
+      }
+      return null;
+    }
+
+    async function insertOrderWithFallback(orderPayload) {
+      try {
+        const res = await db.from('orders').insert(orderPayload);
+        if (!res.error) return res;
+
+        // Fallback if column is_legacy is not yet added in Supabase
+        if (res.error && res.error.message && res.error.message.includes('does not exist')) {
+          console.warn('Orders column notice (apply migration in db/migrations/01_add_is_legacy_to_orders.sql):', res.error.message);
+          const fallbackPayload = { ...orderPayload };
+          delete fallbackPayload.is_legacy;
+          delete fallbackPayload.order_type;
+          if (orderPayload.is_legacy) {
+            fallbackPayload.notes = (fallbackPayload.notes ? fallbackPayload.notes + ' ' : '') + '[LEGACY_INGESTION]';
+          }
+          return await db.from('orders').insert(fallbackPayload);
+        }
+        return res;
+      } catch (err) {
+        console.error('Insert order error:', err);
+        return { error: err };
+      }
+    }
+
     async function fetchInvoicesFromSupabase() {
       try {
         const { data, error } = await db.from('orders').select('*');
         if (data && data.length > 0) {
           data.forEach(order => {
-            const invNo = order.order_no ? (order.order_no.startsWith('#') ? order.order_no : `#INV-${order.order_no.padStart(4, '0')}`) : `#INV-0000`;
+            const isLegacy = order.is_legacy === true ||
+              order.order_type === 'legacy' ||
+              (order.notes && order.notes.includes('[LEGACY_INGESTION]')) ||
+              (order.order_no && String(order.order_no).startsWith('LEG-'));
+
+            const invNo = order.order_no
+              ? (order.order_no.startsWith('#') || order.order_no.startsWith('LEG-')
+                ? order.order_no
+                : `#INV-${order.order_no.padStart(4, '0')}`)
+              : `#INV-0000`;
+
             const exists = MASTER_INVOICES.find(i => i.invoiceNo === invNo);
             if (!exists) {
               MASTER_INVOICES.unshift({
@@ -1646,6 +1984,7 @@
                 transport: order.transport || 0,
                 status: 'CONFIRMED',
                 depositStatus: 'HELD',
+                isLegacy: Boolean(isLegacy),
                 items: Array.isArray(order.items) ? order.items : []
               });
             }
@@ -1653,6 +1992,7 @@
           persistMasterInvoices();
           renderAllInvoicesTable(MASTER_INVOICES);
           renderDepositsTable();
+          renderLegacyLogsTable();
         }
       } catch (e) {
         console.log('Supabase sync note:', e);
@@ -1685,17 +2025,24 @@
       // Fetch saved orders from Supabase DB asynchronously
       fetchInvoicesFromSupabase();
 
+      // Fetch existing customers from Supabase for Autocomplete
+      await fetchCustomersFromSupabase();
+
       // Initialize Invoice Number serially
       const nextNo = getNextSerialInvoiceNo();
       document.getElementById('badgeNo').textContent = nextNo;
       document.getElementById('fOrderNo').value = nextNo;
 
-      // Clear & populate starter item rows
+      // Clear & populate starter item rows for Invoicing
       clearInvoiceForm();
+
+      // Initialize Legacy Ingestion Entry
+      createNewLegacyEntry();
 
       // Render Tables
       renderAllInvoicesTable(MASTER_INVOICES);
       renderDepositsTable();
+      renderLegacyLogsTable();
 
       // Initialize Charts in Analysis Tab
       initCharts();
@@ -1705,10 +2052,12 @@
     function getNextSerialInvoiceNo() {
       let maxSeq = 0;
       MASTER_INVOICES.forEach(inv => {
-        const match = inv.invoiceNo.match(/\d+/);
-        if (match) {
-          const num = parseInt(match[0], 10);
-          if (num > maxSeq) maxSeq = num;
+        if (!inv.isLegacy) {
+          const match = inv.invoiceNo.match(/\d+/);
+          if (match) {
+            const num = parseInt(match[0], 10);
+            if (num > maxSeq) maxSeq = num;
+          }
         }
       });
       const nextNum = maxSeq + 1;
@@ -1778,6 +2127,7 @@
     /* ── ALL INVOICES TAB LIST RENDERING & CLICK INTERACTION ───────────────── */
     function renderAllInvoicesTable(invoices) {
       const tbody = document.getElementById('allInvoicesListBody');
+      if (!tbody) return;
       if (!invoices || invoices.length === 0) {
         tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--muted); padding: 30px;">No invoices found matching your filter criteria.</td></tr>`;
         return;
@@ -1792,13 +2142,22 @@
         else if (inv.status === 'OUT_ON_HIRE') { statusClass = 'on_hire'; statusLabel = 'Out on hire'; }
         else if (inv.status === 'RETURNED') { statusClass = 'returned'; statusLabel = 'Returned'; }
 
+        const typeBadge = inv.isLegacy
+          ? `<span class="badge-legacy">📜 LEGACY</span>`
+          : `<span class="badge-new">⚡ NEW</span>`;
+
         const editBtn = isSuperAdmin
           ? `<button class="btn btn-red" style="padding: 4px 10px; font-size: 11px; margin-right: 4px;" onclick="event.stopPropagation(); editInvoiceAsSuperAdmin('${inv.invoiceNo}')">✏️ Edit</button>`
           : '';
 
         return `
       <tr class="clickable-row" onclick="openInvoiceDetailModal('${inv.invoiceNo}')">
-        <td><strong style="color: var(--red); font-family: 'Outfit', sans-serif; font-size: 14px;">${inv.invoiceNo}</strong></td>
+        <td>
+          <div style="display: flex; align-items: center; gap: 6px;">
+            <strong style="color: var(--red); font-family: 'Outfit', sans-serif; font-size: 14px;">${inv.invoiceNo}</strong>
+            ${typeBadge}
+          </div>
+        </td>
         <td>${inv.date}</td>
         <td><strong>${inv.customerName}</strong></td>
         <td class="td-address">${inv.address}</td>
@@ -1814,11 +2173,15 @@
     }
 
     function filterAllInvoicesTable(query) {
-      const q = query.toLowerCase().trim();
-      const status = document.getElementById('invoiceStatusFilter').value;
+      const q = (query || '').toLowerCase().trim();
+      const status = document.getElementById('invoiceStatusFilter')?.value || 'ALL';
       let filtered = MASTER_INVOICES;
 
-      if (status !== 'ALL') {
+      if (status === 'LEGACY') {
+        filtered = filtered.filter(i => i.isLegacy);
+      } else if (status === 'NEW') {
+        filtered = filtered.filter(i => !i.isLegacy);
+      } else if (status !== 'ALL') {
         filtered = filtered.filter(i => i.status === status);
       }
 
@@ -1835,7 +2198,7 @@
     }
 
     function filterInvoiceByStatus() {
-      const q = document.getElementById('allInvoicesSearchInput').value;
+      const q = document.getElementById('allInvoicesSearchInput')?.value || '';
       filterAllInvoicesTable(q);
     }
 
@@ -1976,7 +2339,7 @@
     }
 
     /* ── SAVE & FULFILL INVOICE (PERSISTS PERMANENTLY TO LOCALSTORAGE & SUPABASE) ── */
-    function saveInvoice(status = 'CONFIRMED') {
+    async function saveInvoice(status = 'CONFIRMED') {
       const invoiceNo = document.getElementById('fOrderNo').value || getNextSerialInvoiceNo();
       const customerName = document.getElementById('fCustomerName').value.trim();
       const phone = document.getElementById('fPhone').value.trim();
@@ -2013,6 +2376,15 @@
       const vat = subtotal * 0.075;
       const grandTotal = subtotal + vat + caution + transport;
 
+      // 1. Sync & persist customer details to DB customer table
+      await saveCustomerToDb({
+        name: customerName,
+        telephone: phone,
+        email: email,
+        address: address,
+        notes: `Customer created from Invoice ${invoiceNo}`
+      });
+
       const existingIdx = MASTER_INVOICES.findIndex(i => i.invoiceNo === invoiceNo);
       const newInvoiceObj = {
         invoiceNo,
@@ -2028,6 +2400,7 @@
         transport,
         status: existingIdx !== -1 ? MASTER_INVOICES[existingIdx].status : 'CONFIRMED',
         depositStatus: existingIdx !== -1 ? MASTER_INVOICES[existingIdx].depositStatus : 'HELD',
+        isLegacy: false,
         items
       };
 
@@ -2039,26 +2412,27 @@
 
       persistMasterInvoices();
 
-      try {
-        db.from('orders').insert({
-          order_no: invoiceNo.replace('#INV-', ''),
-          order_date: startDate || new Date().toISOString().split('T')[0],
-          cust_name: customerName,
-          telephone: phone,
-          email: email,
-          address: address,
-          rental_total: subtotal,
-          caution_dep: caution,
-          transport: transport,
-          grand_total: grandTotal,
-          items: items
-        }).then(({ data, error }) => {
-          if (error) console.log('Supabase sync note:', error.message);
-        });
-      } catch (e) { }
+      // 2. Persist to Supabase orders table with order differentiation
+      insertOrderWithFallback({
+        order_no: invoiceNo.replace('#INV-', ''),
+        order_date: startDate || new Date().toISOString().split('T')[0],
+        cust_name: customerName,
+        telephone: phone,
+        email: email,
+        address: address,
+        rental_total: subtotal,
+        caution_dep: caution,
+        transport: transport,
+        grand_total: grandTotal,
+        items: items,
+        is_legacy: false,
+        order_type: 'new',
+        notes: 'Live system invoice'
+      });
 
       renderAllInvoicesTable(MASTER_INVOICES);
       renderDepositsTable();
+      renderLegacyLogsTable();
 
       showToast(`Invoice ${invoiceNo} saved & updated successfully!`, 'success');
       createNewTransaction();
@@ -2071,6 +2445,14 @@
 
       activeSelectedInvoice = inv;
       document.getElementById('modalInvoiceNo').textContent = `INVOICE ${inv.invoiceNo}`;
+      
+      const typeBadgeEl = document.getElementById('modalInvoiceTypeBadge');
+      if (typeBadgeEl) {
+        typeBadgeEl.innerHTML = inv.isLegacy
+          ? `<span class="badge-legacy">📜 HISTORICAL LEGACY RECORD</span>`
+          : `<span class="badge-new">⚡ LIVE SYSTEM INVOICE</span>`;
+      }
+
       document.getElementById('modalInvoiceDate').textContent = `Issued: ${inv.date}`;
       document.getElementById('modalCustomerName').textContent = inv.customerName;
       document.getElementById('modalCustomerContact').textContent = `${inv.phone} · ${inv.email}`;
@@ -2239,26 +2621,333 @@
       closeRefundModal();
     }
 
-    /* ── DATA ENTRY & LEGACY INGESTION ────────────────────────────────────── */
-    function handleLegacySubmit(e) {
-      e.preventDefault();
-      const ref = document.getElementById('legRef').value;
-      const date = document.getElementById('legDate').value;
-      const name = document.getElementById('legCustomerName').value;
-      const items = document.getElementById('legItems').value;
+    /* ── DATA ENTRY & LEGACY INGESTION (INVENTORY BUILDER SYSTEM) ─────────── */
+    function getNextSerialLegacyNo() {
+      let maxSeq = 0;
+      MASTER_INVOICES.forEach(inv => {
+        if (inv.isLegacy || (inv.invoiceNo && inv.invoiceNo.includes('LEG-'))) {
+          const match = inv.invoiceNo.match(/\d+/);
+          if (match) {
+            const num = parseInt(match[0], 10);
+            if (num > maxSeq) maxSeq = num;
+          }
+        }
+      });
+      const nextNum = maxSeq + 1;
+      return `#LEG-${nextNum.toString().padStart(4, '0')}`;
+    }
 
-      const tbody = document.getElementById('legacyLogsBody');
+    function createNewLegacyEntry() {
+      clearLegacyForm();
+      const nextNo = getNextSerialLegacyNo();
+      const badge = document.getElementById('legBadgeNo');
+      const hidden = document.getElementById('legRefNo');
+      if (badge) badge.textContent = nextNo;
+      if (hidden) hidden.value = nextNo;
+    }
+
+    function clearLegacyForm() {
+      if (document.getElementById('legCustomerName')) document.getElementById('legCustomerName').value = '';
+      if (document.getElementById('legPhone')) document.getElementById('legPhone').value = '';
+      if (document.getElementById('legEmail')) document.getElementById('legEmail').value = '';
+      if (document.getElementById('legAddress')) document.getElementById('legAddress').value = '';
+      if (document.getElementById('legCaution')) document.getElementById('legCaution').value = '';
+      if (document.getElementById('legTransport')) document.getElementById('legTransport').value = '';
+
+      const today = new Date().toISOString().split('T')[0];
+      if (document.getElementById('legDate')) document.getElementById('legDate').value = today;
+      if (document.getElementById('legEndDate')) document.getElementById('legEndDate').value = today;
+
+      clearLegacyFile();
+
+      const tbody = document.getElementById('legItemsBody');
+      if (tbody) {
+        tbody.innerHTML = '';
+        legacyRowId = 0;
+        addLegacyRow(); addLegacyRow(); addLegacyRow();
+      }
+      recalcLegacy();
+    }
+
+    function addLegacyRow(item = null) {
+      legacyRowId++;
+      const id = legacyRowId;
       const tr = document.createElement('tr');
+      tr.id = 'leg-r' + id;
       tr.innerHTML = `
-    <td>${ref}</td>
-    <td>${date}</td>
-    <td>${name}</td>
-    <td>${items}</td>
-    <td><span style="background: #E8F4EE; color: #2F6B4F; border: 1px solid #C4D9CD; padding: 3px 8px; border-radius: 4px; font-weight: 700; font-size: 11px;">INGESTED</span></td>
-  `;
-      tbody.prepend(tr);
-      document.getElementById('legacyDataForm').reset();
-      showToast('Legacy transaction ingested into DB successfully!', 'success');
+        <td><input type="number" min="0" class="leg-qty" value="${item ? item.qty : ''}" placeholder="0" oninput="calcLegacyRow(${id})" /></td>
+        <td style="position:relative;">
+          <input type="text" class="leg-desc" value="${item ? (item.desc || '').replace(/"/g, '&quot;') : ''}" placeholder="Search inventory catalog..." oninput="searchLegacyCatalog(this, ${id})" autocomplete="off" />
+          <div class="autocomplete-results" id="leg-ac-${id}"></div>
+        </td>
+        <td><input type="number" min="0" step="0.01" class="leg-price" value="${item ? item.price : ''}" placeholder="0.00" oninput="calcLegacyRow(${id})" /></td>
+        <td><input type="number" class="leg-charge" value="${item ? item.total : ''}" readonly placeholder="—" tabindex="-1" /></td>
+        <td><button class="btn btn-ghost" style="padding: 4px 8px; color: #ef4444;" onclick="delLegacyRow(${id})">✕</button></td>
+      `;
+      const tbody = document.getElementById('legItemsBody');
+      if (tbody) tbody.appendChild(tr);
+    }
+
+    function delLegacyRow(id) {
+      const row = document.getElementById('leg-r' + id);
+      if (row) {
+        row.remove();
+        recalcLegacy();
+      }
+    }
+
+    function searchLegacyCatalog(inputEl, id) {
+      const val = inputEl.value.toLowerCase().trim();
+      const res = document.getElementById(`leg-ac-${id}`);
+      if (!res) return;
+      if (!val) { res.style.display = 'none'; return; }
+
+      const matches = INVENTORY_CATALOG.filter(i => i.desc.toLowerCase().includes(val));
+      if (!matches.length) { res.style.display = 'none'; return; }
+
+      res.innerHTML = matches.map(m => `
+        <div class="autocomplete-item" onclick="selectLegacyCatalogItem(${id}, '${m.desc.replace(/'/g, "\\'")}', ${m.price})">
+          <div class="name">${m.desc}</div>
+          <div class="sub">₦ ${m.price.toLocaleString()} / day</div>
+        </div>
+      `).join('');
+      res.style.display = 'block';
+    }
+
+    function selectLegacyCatalogItem(id, desc, price) {
+      const row = document.getElementById('leg-r' + id);
+      if (!row) return;
+      row.querySelector('.leg-desc').value = desc;
+      row.querySelector('.leg-price').value = price;
+      const res = document.getElementById(`leg-ac-${id}`);
+      if (res) res.style.display = 'none';
+      calcLegacyRow(id);
+    }
+
+    function calcLegacyRow(id) {
+      const row = document.getElementById('leg-r' + id);
+      if (!row) return;
+      const qty = parseFloat(row.querySelector('.leg-qty')?.value) || 0;
+      const price = parseFloat(row.querySelector('.leg-price')?.value) || 0;
+      const charge = qty * price;
+      const chargeEl = row.querySelector('.leg-charge');
+      if (chargeEl) chargeEl.value = charge > 0 ? charge.toFixed(2) : '';
+      recalcLegacy();
+    }
+
+    function recalcLegacy() {
+      let rental = 0;
+      document.querySelectorAll('#legItemsBody .leg-charge').forEach(el => {
+        rental += parseFloat(el.value) || 0;
+      });
+      const vat = rental * 0.075;
+      const caution = parseFloat(document.getElementById('legCaution')?.value) || 0;
+      const transport = parseFloat(document.getElementById('legTransport')?.value) || 0;
+      const grand = rental + vat + caution + transport;
+
+      if (document.getElementById('legRental')) document.getElementById('legRental').textContent = '₦ ' + fmt(rental);
+      if (document.getElementById('legVat')) document.getElementById('legVat').textContent = '₦ ' + fmt(vat);
+      if (document.getElementById('legCautionSummary')) document.getElementById('legCautionSummary').textContent = '₦ ' + fmt(caution);
+      if (document.getElementById('legTransportSummary')) document.getElementById('legTransportSummary').textContent = '₦ ' + fmt(transport);
+      if (document.getElementById('legTotal')) document.getElementById('legTotal').textContent = '₦ ' + fmt(grand);
+      if (document.getElementById('legWords')) document.getElementById('legWords').textContent = numWords(Math.round(grand)) + ' Naira only';
+    }
+
+    function handleLegacyReceiptFile(files) {
+      if (!files || !files.length) return;
+      const file = files[0];
+      if (!file.type.startsWith('image/')) {
+        showToast('Please upload an image file (PNG, JPG, JPEG, WEBP)', 'error');
+        return;
+      }
+      selectedLegacyFile = file;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const preview = document.getElementById('legacyReceiptPreview');
+        const dropzone = document.getElementById('legacyDropzone');
+        if (dropzone) dropzone.style.display = 'none';
+        if (preview) {
+          preview.innerHTML = `
+            <div class="receipt-preview-card">
+              <img src="${e.target.result}" alt="Receipt Thumbnail" />
+              <div style="flex: 1;">
+                <div style="font-weight: 700; font-size: 13.5px; color: var(--text);">${file.name}</div>
+                <div style="font-size: 11.5px; color: var(--muted);">${(file.size / 1024).toFixed(1)} KB · Scanned Physical Receipt</div>
+              </div>
+              <button class="btn btn-ghost" style="color: #ef4444; padding: 6px 12px; font-size: 12px;" onclick="clearLegacyFile()">✕ Remove</button>
+            </div>
+          `;
+          preview.style.display = 'block';
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function clearLegacyFile() {
+      selectedLegacyFile = null;
+      const fileInput = document.getElementById('legReceiptFile');
+      if (fileInput) fileInput.value = '';
+      const preview = document.getElementById('legacyReceiptPreview');
+      if (preview) {
+        preview.innerHTML = '';
+        preview.style.display = 'none';
+      }
+      const dropzone = document.getElementById('legacyDropzone');
+      if (dropzone) dropzone.style.display = 'flex';
+    }
+
+    async function saveLegacyInvoice() {
+      const refNo = document.getElementById('legRefNo')?.value || getNextSerialLegacyNo();
+      const customerName = (document.getElementById('legCustomerName')?.value || '').trim();
+      const phone = (document.getElementById('legPhone')?.value || '').trim();
+      const email = (document.getElementById('legEmail')?.value || '').trim();
+      const address = (document.getElementById('legAddress')?.value || '').trim();
+      const legacyDate = document.getElementById('legDate')?.value || new Date().toISOString().split('T')[0];
+      const caution = parseFloat(document.getElementById('legCaution')?.value) || 0;
+      const transport = parseFloat(document.getElementById('legTransport')?.value) || 0;
+
+      if (!customerName) {
+        showToast('Please enter customer full name before ingesting', 'error');
+        document.getElementById('legCustomerName')?.focus();
+        return;
+      }
+
+      const items = [];
+      let subtotal = 0;
+      document.querySelectorAll('#legItemsBody tr').forEach(row => {
+        const qty = parseFloat(row.querySelector('.leg-qty')?.value) || 0;
+        const desc = (row.querySelector('.leg-desc')?.value || '').trim();
+        const price = parseFloat(row.querySelector('.leg-price')?.value) || 0;
+        const total = qty * price;
+        if (qty > 0 && desc) {
+          items.push({ qty, desc, price, total });
+          subtotal += total;
+        }
+      });
+
+      if (items.length === 0) {
+        showToast('Please add at least one rental item to the legacy breakdown', 'error');
+        return;
+      }
+
+      const vat = subtotal * 0.075;
+      const grandTotal = subtotal + vat + caution + transport;
+
+      // 1. Sync & persist customer details to the Supabase customer table
+      await saveCustomerToDb({
+        name: customerName,
+        telephone: phone,
+        email: email,
+        address: address,
+        notes: `Legacy customer ingested from historical record ${refNo}`
+      });
+
+      // 2. Build local Master Invoice Object with isLegacy = true
+      const existingIdx = MASTER_INVOICES.findIndex(i => i.invoiceNo === refNo);
+      const legacyInvoiceObj = {
+        invoiceNo: refNo,
+        date: legacyDate,
+        customerName,
+        phone: phone || 'N/A',
+        email: email || 'N/A',
+        address: address || 'Store Pickup / Local Delivery',
+        totalCost: grandTotal,
+        subtotal,
+        vat,
+        caution,
+        transport,
+        status: 'CONFIRMED',
+        depositStatus: caution > 0 ? 'HELD' : 'N/A',
+        isLegacy: true,
+        items
+      };
+
+      if (existingIdx !== -1) {
+        MASTER_INVOICES[existingIdx] = legacyInvoiceObj;
+      } else {
+        MASTER_INVOICES.unshift(legacyInvoiceObj);
+      }
+
+      persistMasterInvoices();
+
+      // 3. Insert into Supabase orders table with is_legacy = TRUE & order_type = 'legacy'
+      insertOrderWithFallback({
+        order_no: refNo.replace(/^#/, ''),
+        order_date: legacyDate,
+        cust_name: customerName,
+        telephone: phone,
+        email: email,
+        address: address,
+        rental_total: subtotal,
+        caution_dep: caution,
+        transport: transport,
+        grand_total: grandTotal,
+        items: items,
+        is_legacy: true,
+        order_type: 'legacy',
+        notes: 'Legacy paper receipt ingestion'
+      });
+
+      // 4. Update UI Tables
+      renderAllInvoicesTable(MASTER_INVOICES);
+      renderDepositsTable();
+      renderLegacyLogsTable();
+
+      showToast(`Legacy record ${refNo} ingested successfully! Customer & orders updated.`, 'success');
+
+      // 5. Initialize fresh blank legacy entry
+      createNewLegacyEntry();
+    }
+
+    function renderLegacyLogsTable(records = null) {
+      const tbody = document.getElementById('legacyLogsBody');
+      if (!tbody) return;
+
+      const logs = records || MASTER_INVOICES.filter(i => i.isLegacy);
+
+      if (logs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: var(--muted); padding: 30px;">No legacy ingestion records found. Ingest historical physical receipts above.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = logs.map(inv => {
+        const itemsSummary = Array.isArray(inv.items) && inv.items.length > 0
+          ? inv.items.map(it => `${it.qty}x ${it.desc}`).join(', ')
+          : 'Legacy items package';
+
+        return `
+          <tr class="clickable-row" onclick="openInvoiceDetailModal('${inv.invoiceNo}')">
+            <td><strong style="color: var(--forest-dark); font-family: 'Outfit', sans-serif;">${inv.invoiceNo}</strong></td>
+            <td>${inv.date}</td>
+            <td><strong>${inv.customerName}</strong></td>
+            <td style="max-width: 280px; white-space: normal; line-height: 1.4; font-size: 12.5px; color: #475569;">${itemsSummary}</td>
+            <td><strong>₦ ${inv.totalCost.toLocaleString('en-NG', { minimumFractionDigits: 2 })}</strong></td>
+            <td><span class="badge-legacy">📜 LEGACY</span></td>
+            <td style="text-align: center; white-space: nowrap;">
+              <button class="btn btn-ghost" style="padding: 4px 8px; font-size: 11px;">View ➔</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function filterLegacyLogsTable(query) {
+      const q = (query || '').toLowerCase().trim();
+      let legacyOnly = MASTER_INVOICES.filter(i => i.isLegacy);
+      if (q) {
+        legacyOnly = legacyOnly.filter(i =>
+          i.invoiceNo.toLowerCase().includes(q) ||
+          i.customerName.toLowerCase().includes(q) ||
+          (Array.isArray(i.items) && i.items.some(it => it.desc.toLowerCase().includes(q))) ||
+          i.totalCost.toString().includes(q)
+        );
+      }
+      renderLegacyLogsTable(legacyOnly);
+    }
+
+    function printLegacyRecord() {
+      window.print();
     }
 
     /* ── CHARTS & AI ASSISTANT ────────────────────────────────────────────── */
