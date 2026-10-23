@@ -245,6 +245,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/db.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/utils.js"></script>
   <script>
     (async function init() {
       const authData = await auth.checkAuth('admin');
@@ -263,15 +264,10 @@
         console.error('Error loading users:', error);
         return;
       }
-
-      // Note: profiles table doesn't have email by default in my script, 
-      // but the trigger sets full_name to email if meta is empty.
-      // To get emails, we would need to join with auth.users which is restricted.
-      // However, we can use the 'user' metadata if we have it or just show names.
-      // For this demo, let's assume we want to show emails if we can.
       
       const tbody = document.querySelector('#usersTable tbody');
       function getRoleBadge(role) {
+        const safeRole = escapeHtml(role || 'USER');
         if (role === 'admin' || role === 'super_admin') {
           return `<span style="background: #FEF3C7; color: #92400E; border: 1px solid #FDE68A; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">👑 Super Admin</span>`;
         } else if (role === 'data_entry') {
@@ -281,16 +277,20 @@
         } else if (role === 'analyst') {
           return `<span style="background: #EFE9E1; color: #57463B; border: 1px solid #DDD3C5; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">📊 Analyst</span>`;
         }
-        return `<span style="background: #F3EFE9; color: #6F675C; border: 1px solid #E5DFD7; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">${role || 'USER'}</span>`;
+        return `<span style="background: #F3EFE9; color: #6F675C; border: 1px solid #E5DFD7; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px;">${safeRole}</span>`;
       }
 
-      tbody.innerHTML = users.map(u => `
+      tbody.innerHTML = (users || []).map(u => {
+        const safeName = escapeHtml(u.full_name || 'N/A');
+        const safeEmail = u.full_name && u.full_name.includes('@') ? escapeHtml(u.full_name) : 'N/A';
+        return `
         <tr>
-          <td><strong style="color: var(--text);">${u.full_name || 'N/A'}</strong></td>
-          <td style="color: var(--muted);">${u.full_name && u.full_name.includes('@') ? u.full_name : 'N/A'}</td>
+          <td><strong style="color: var(--text);">${safeName}</strong></td>
+          <td style="color: var(--muted);">${safeEmail}</td>
           <td>${getRoleBadge(u.role)}</td>
         </tr>
-      `).join('');
+      `;
+      }).join('');
     }
 
     document.getElementById('createUserForm').onsubmit = async (e) => {
