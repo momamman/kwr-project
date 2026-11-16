@@ -1,0 +1,180 @@
+/* ==============================================================================
+   Kitchenware Rentals Ltd — Admin Users Page Styles
+   Page-specific styles layered over the shared design system (css/main.css)
+   ============================================================================== */
+
+:root {
+  --bg: #F5F1EB;
+}
+
+body {
+  background: var(--bg);
+  padding: 40px 20px 60px;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 860px;
+  margin: 0 auto;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 28px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.header-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.header-logo {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+
+.header h1 {
+  font-family: 'Playfair Display', Georgia, serif;
+  font-size: 26px;
+  color: var(--espresso);
+  font-weight: 700;
+}
+
+.header p {
+  font-family: 'Outfit', sans-serif;
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--berry);
+  font-weight: 700;
+}
+
+.btn-berry {
+  background: var(--berry);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(167, 18, 101, 0.25);
+}
+
+.btn-berry:hover {
+  background: var(--berry-dark);
+  transform: translateY(-1px);
+}
+
+.card {
+  background: var(--card);
+  padding: 32px 36px;
+  border-radius: 16px;
+  box-shadow: var(--shadow-md);
+  margin-bottom: 28px;
+  border: 1px solid var(--border);
+}
+
+h2 {
+  margin-bottom: 20px;
+  color: var(--espresso);
+  font-family: 'Outfit', sans-serif;
+  font-size: 16px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+h2::before {
+  content: '';
+  display: inline-block;
+  width: 4px;
+  height: 18px;
+  background: var(--berry);
+  border-radius: 2px;
+}
+
+.field {
+  margin-bottom: 15px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+}
+
+.field input,
+.field select {
+  border: 1.5px solid var(--border);
+  background: #FAF7F2;
+  padding: 10px 14px;
+  border-radius: 8px;
+  width: 100%;
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--text);
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.field input:focus,
+.field select:focus {
+  background: #FFFFFF;
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 3px rgba(167, 18, 101, 0.12);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 10px;
+}
+
+th {
+  text-align: left;
+  padding: 12px 14px;
+  border-bottom: 2px solid var(--border);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--muted);
+  background: #FAF7F2;
+}
+
+td {
+  padding: 13px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13.5px;
+}
+
+tr:hover td {
+  background: #FCFAF7;
+}
+
+/* Create user form grid */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+/* Full-width submit button */
+.btn-submit {
+  margin-top: 12px;
+}
+
+/* Loading state row */
+.loading-row td {
+  text-align: center;
+  color: var(--muted);
+}

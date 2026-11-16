@@ -33,7 +33,11 @@ async function checkAuth(requiredRole = null) {
   
   if (!session) {
     if (window.location.pathname.indexOf('login.html') === -1) {
-      window.location.href = 'login.html';
+      // Preserve deep links (e.g. a scanned ?invoice=INV-0001 QR code) across
+      // the login round-trip.
+      const here = window.location.pathname.split('/').pop() || 'index.html';
+      const target = `${here}${window.location.search}`;
+      window.location.href = `login.html?redirect=${encodeURIComponent(target)}`;
     }
     return null;
   }

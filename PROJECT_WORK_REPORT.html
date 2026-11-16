@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Kitchenware Rentals ERP — Project Work Report</title>
+<style>
+  :root { --ink:#1f2937; --muted:#6b7280; --border:#e5e7eb; --accent:#7a1737; --accent2:#2f6b4f; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background:#f3f4f6; color:var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 11pt; line-height: 1.55; }
+  .page { max-width: 900px; margin: 0 auto; background:#fff; padding: 48px 56px 64px; }
+  h1 { font-size: 24pt; color: var(--accent); margin: 0 0 6px; letter-spacing:-.01em; }
+  h2 { font-size: 15pt; color: var(--accent); margin: 28px 0 10px; padding-bottom:5px; border-bottom:2px solid #f1e4e8; }
+  h3 { font-size: 12.5pt; margin: 20px 0 8px; color:#111827; }
+  p { margin: 8px 0; }
+  strong { color:#111827; }
+  code { font-family: "SFMI", ui-monospace, Menlo, Consolas, monospace; font-size: 9.5pt;
+    background:#f3f4f6; border:1px solid #e5e7eb; border-radius:4px; padding:1px 5px; }
+  pre.code { background:#111827; color:#f9fafb; border-radius:8px; padding:12px 14px; overflow-x:auto; margin:10px 0; }
+  pre.code code { background:none; border:none; color:inherit; padding:0; font-size:9pt; line-height:1.5; }
+  hr { border:none; border-top:1px solid var(--border); margin:24px 0; }
+  blockquote { margin:12px 0; padding:10px 14px; border-left:4px solid var(--accent2); background:#f2fbf6; color:#374151; }
+  .table-wrap { overflow-x:auto; margin:12px 0; }
+  table { width:100%; border-collapse:collapse; font-size:9.5pt; }
+  th { background:#f8fafc; text-align:left; font-weight:700; color:#374151;
+    border:1px solid var(--border); padding:7px 9px; vertical-align:top; }
+  td { border:1px solid var(--border); padding:7px 9px; vertical-align:top; }
+  tr:nth-child(even) td { background:#fcfcfd; }
+  ul, ol { margin:8px 0 8px 22px; padding:0; }
+  li { margin:3px 0; }
+  a { color: var(--accent); }
+  @media print {
+    body { background:#fff; font-size:10pt; }
+    .page { max-width:none; padding:0; }
+    h2 { break-after: avoid; }
+    table, pre.code, blockquote { break-inside: avoid; }
+    thead { display: table-header-group; }
+  }
+  @page { size: A4; margin: 16mm 14mm 16mm 14mm; }
+</style>
+</head>
+<body><div class="page">
+<h1>Kitchenware Rentals ERP — Project Work Report</h1>
+<div class="table-wrap"><table><thead><tr><th>Field</th><th>Detail</th></tr></thead><tbody><tr><td><strong>Project</strong></td><td>Kitchenware Rentals Ltd — ERP &amp; Order Management System</td></tr><tr><td><strong>Workspace</strong></td><td><code>/Users/a1/Documents/kwr-brewkeg</code></td></tr><tr><td><strong>Report date</strong></td><td>10 Nov 2026</td></tr><tr><td><strong>Build version</strong></td><td><code>?v=64</code> (asset cache-buster in <code>index.html</code>)</td></tr></tbody></table></div>
+<hr />
+<h2>1. Executive summary</h2>
+<p>This project added a <strong>lightweight review gate for returned invoices</strong> so that a caution-deposit payout can only be released after the returned-items audit has been reviewed and approved by a Super Admin. The work includes an approval state machine, an audit fingerprint that ties approval to the exact evidence reviewed, balance-due tracking, nil-refund support, a revoke workflow, and a full payout trail.</p>
+<p>A second phase addressed defects reported during testing: transactions could still be edited and their status changed after the deposit had been paid out, and the review modal asked reviewers to tick a checklist before showing them the evidence. Both were fixed, and an in-modal <strong>Edit audit</strong> action was added so the reviewer can correct the audit and be returned to the review gate.</p>
+<p>All state persists in <code>localStorage</code> (<code>kwr_saved_invoices</code>) via <code>persistMasterInvoices()</code>. <strong>No Supabase schema change was introduced.</strong> The report/print pipeline is unchanged apart from a status strip on the return report.</p>
+<hr />
+<h2>2. Original objective and requirements</h2>
+<p><strong>Objective:</strong> Ensure deposit payouts for returned invoices are only initiated after the returned-items audit has been reviewed and approved by a Super Admin, with a complete audit trail.</p>
+<p><strong>Requirements captured:</strong></p>
+<ol><li>Returned invoices must pass a review before a payout can be initiated.</li><li>The review checklist must be completed before approval.</li><li>Approval stores the approved refund amount, the auditor, and a timestamp.</li><li>The audit is locked from further edits after payout.</li><li>A balance-due flag is raised when return charges exceed the caution deposit.</li><li>Nil refunds can be recorded when the deposit is fully consumed.</li><li>Approval can be revoked with a reason, which re-locks the payout.</li><li>All changes persist in <code>localStorage</code>; no Supabase schema change.</li><li>The report and print pipeline remain unchanged except for a status strip.</li></ol>
+<hr />
+<h2>3. Design decisions</h2>
+<div class="table-wrap"><table><thead><tr><th>Decision</th><th>Rationale</th></tr></thead><tbody><tr><td><strong>Lightweight gate (Option A)</strong></td><td>Reuses the existing service-report and audit modals; adds a checklist, approval state, and payout gating instead of building a separate workflow engine.</td></tr><tr><td><strong>Audit signature fingerprint</strong></td><td><code>returnAuditSignature()</code> hashes the reviewed evidence (items, quantities, conditions, charges, notes, fees). Approval stores this signature; if the audit is edited the signature no longer matches and the approval is treated as stale.</td></tr><tr><td><strong>Balance derived from money</strong></td><td><code>balance = returnCharges − depositApplied</code>. A positive result is payable by the customer; negative is refundable.</td></tr><tr><td><strong>Revoke resets approval</strong></td><td>Revoking deletes <code>returnReview</code> and <code>refundAmount</code>, appends to <code>reviewRevocations</code>, and re-locks payout until re-reviewed.</td></tr><tr><td><strong>No gateway integration</strong></td><td>“Execute API Payout” was relabelled <strong>“Record payout”</strong> to make clear it records a payout rather than moving money through a payment gateway.</td></tr><tr><td><strong>Lock at <code>RETURNED</code> + <code>REFUNDED</code></strong></td><td>Once the deposit is paid out, the transaction is settled and must not be edited, re-statused, or re-audited.</td></tr></tbody></table></div>
+<hr />
+<h2>4. Phase 1 — Review gate implementation (earlier session)</h2>
+<p>The following was completed in the first phase (reconstructed from the session record):</p>
+<ul><li><strong>Review checklist</strong> with three confirmations (items, charges, refund) required before approval.</li><li><strong><code>returnReview</code> state machine:</strong> <code>PENDING → APPROVED → PAID → CLOSED</code> (plus <code>LOCKED</code>/<code>MISSING</code> derived states).</li><li><strong>Audit fingerprint (<code>auditSignature</code>)</strong> tying an approval to the exact audit snapshot.</li><li><strong>Approval invalidation</strong> on audit edit or when the invoice status leaves <code>RETURNED</code>.</li><li><strong>Revoke approval</strong> workflow with a mandatory reason, recorded in <code>reviewRevocations</code>.</li><li><strong>Balance-due tracking</strong> via <code>returnBalanceDue()</code>, surfaced as <code>balanceFlag</code> in the deposits table and the All Invoices row.</li><li><strong>Nil refund support</strong> when the caution deposit is fully consumed by return charges.</li><li><strong>Report status strip:</strong> <code>⏳ Review pending</code> / <code>✓ Return approved</code> / <code>✅ Deposit refunded</code> / <code>⚠ Balance payable</code>.</li><li><strong>Payout trail:</strong> <code>payoutEditHistory</code> for post-payout corrections and <code>payoutAdjustment</code> (<code>approved</code>, <code>paid</code>, <code>reason</code>).</li><li><strong>“Execute API Payout” → “Record payout”</strong> label change.</li><li><strong>Report strip payout amount</strong> shows <code>refundPaidAmount</code>, bank, and refund date.</li><li><strong>Post-payout audit lock:</strong> “Edit audit” disabled and “Audit locked” label shown.</li><li><strong>Cache-busters</strong> raised to <code>?v=60</code>.</li><li>Verified: pending blocks payout; incomplete checklist blocks approval; approval unlocks payout; a different payout amount requires a reason; nil refund records; audit edit resets approval; status change clears approval; paid-payout edits keep history; mobile has no overflow; report fits one A4 page.</li></ul>
+<hr />
+<h2>5. Phase 2 — Prompt log, fixes, and enhancements</h2>
+<h3>Prompt 1 — “i am still able to edit a transaction after it has been returned and deposit paid, fix”</h3>
+<p><strong>Problem:</strong> Super Admins could still open and save the transaction editor for an invoice already <code>RETURNED</code> with its deposit <code>REFUNDED</code>.</p>
+<p><strong>Changes in <code>js/invoices.js</code>:</strong></p>
+<ol><li><strong><code>editInvoiceAsSuperAdmin(invoiceNo)</code></strong> — added a guard before loading the form:</li></ol>
+<p>   ``<code>js    if (inv.status === 'RETURNED' &amp;&amp; inv.depositStatus === 'REFUNDED') {      showToast('This transaction has been returned and its deposit paid out — it is no longer editable', 'error');      return;    }    </code>``</p>
+<ol><li><strong><code>renderAllInvoicesTable()</code></strong> — the row “Edit” button is now conditional:</li></ol>
+<p>   ``<code>js    const canEditInvoice = isSuperAdmin &amp;&amp;      !(inv.status === 'RETURNED' &amp;&amp; inv.depositStatus === 'REFUNDED');    </code>``</p>
+<ol><li><strong><code>renderDepositsTable()</code></strong> — the “Edit refund details” pencil is hidden once refunded:</li></ol>
+<p>   ``<code>js    const canEditRefund = !isRefunded;    </code>``</p>
+<p><strong>Also checked:</strong> <code>openRefundModal()</code> already blocks refunded deposits; the review modal already refuses <code>REFUNDED</code>; audit save is already locked after payout.</p>
+<hr />
+<h3>Prompt 2 — “i can still change the status from returned to any other”</h3>
+<p><strong>Problem:</strong> The status dropdown in the invoice detail modal could move a paid-out return back to <code>CONFIRMED</code> / <code>OUT_ON_HIRE</code> / etc.</p>
+<p><strong>Change in <code>js/invoices.js</code> — <code>updateInvoiceStatusFromModal(newStatus)</code>:</strong></p>
+<pre class="code language-js"><code>// Block status changes from RETURNED when deposit has already been paid out.
+if (activeSelectedInvoice.status === 'RETURNED' &amp;&amp; activeSelectedInvoice.depositStatus === 'REFUNDED') {
+  showToast('This transaction has been returned and its deposit paid out — the status cannot be changed', 'error');
+  return;
+}</code></pre>
+<p>This sits before any mutation, so the status select reverts to the stored value and the change is refused.</p>
+<hr />
+<h3>Prompt 3 — “i think the review should come before the checklist — pls advice”</h3>
+<p><strong>Observation (with screenshot):</strong> The Review modal showed the financial summary and then the checklist, but not the returned-items evidence the checklist asks the reviewer to confirm.</p>
+<p><strong>Advice given:</strong> Reorder so the reviewer sees evidence → financial summary → checklist. Recommended an inline read-only audit table, with internal scrolling to avoid an over-tall modal. Alternatives offered: a collapsible evidence panel or a two-step wizard. <strong>User chose the inline audit table.</strong></p>
+<p><strong>Implemented:</strong></p>
+<ul><li><strong><code>index.html</code></strong> — added <code>&lt;div class="review-audit" id="returnReviewAudit"&gt;&lt;/div&gt;</code> above the summary.</li><li><strong><code>js/report.js</code></strong> — new <code>returnReviewAuditMarkup(report)</code> renders a compact table: Item · Out · Returned · Condition · Cost, with remarks under the item, a shortfall display (<code>3 / 4</code>), condition pills, and an “N items · X flagged” counter. Injected by <code>openReturnReview()</code>.</li><li><strong><code>js/report.js</code></strong> — intro reworded to “Check the audit evidence … then confirm the checklist below.”</li><li><strong><code>css/main.css</code></strong> — <code>.review-audit*</code> styles, sticky table header, 200px internal scroll, wider <code>.review-modal</code> (560px → 640px).</li></ul>
+<p><strong>Verified:</strong> desktop and 390px mobile screenshots via headless Chrome; correct order <code>review-audit → review-summary → review-checklist</code>; no horizontal overflow; audit panel scrolls internally.</p>
+<hr />
+<h3>Prompt 4 — “include an edit button inside review return modal”</h3>
+<p><strong>Implemented:</strong> an <strong>✏️ Edit audit</strong> button in the review modal footer.</p>
+<ul><li><strong><code>index.html</code></strong> — footer button <code>data-action="edit-audit-from-review"</code>; footer gets a <code>review-actions</code> class.</li><li><strong><code>js/app.js</code></strong> — new <code>edit-audit-from-review</code> action.</li><li><strong><code>js/report.js</code>:</strong></li><li><code>openReturnAuditFromReview()</code> closes the review, then opens the audit editor for that invoice.</li><li><code>openReturnAudit(invoiceNo)</code> now accepts an explicit invoice number.</li><li><code>saveReturnAudit()</code> captures <code>returnAuditFromReview</code> before closing, then reopens the review modal with the updated evidence (checklist resets).</li><li><code>closeReturnAudit()</code> resets the flow flag so cancelling does not bounce the user unexpectedly.</li><li><strong><code>css/main.css</code></strong> — <code>.review-edit-btn</code> left-aligned on desktop, full-width stacked on mobile.</li></ul>
+<p><strong>Verified:</strong> Edit button present; click opens the audit editor for the correct invoice; changing a charge and saving reopens the review with updated evidence and recalculated refund; mobile has no overflow.</p>
+<hr />
+<h3>Prompt 5 — “clicking on the edit button open the return edit modal of that transaction for editing”</h3>
+<p><strong>What was checked:</strong> With two returned invoices (<code>#INV-9001</code> Alpha Cafe, <code>#INV-9002</code> Beta Events), the real deposits-table <strong>Review return</strong> button was clicked for <code>#INV-9002</code>, then <strong>Edit audit</strong>:</p>
+<pre class="code"><code>OPEN REVIEW #9002: reviewInvoice = #INV-9002
+CLICK EDIT AUDIT : auditInvoiceNo = #INV-9002
+                   subtitle = "#INV-9002 · Beta Events · record damages, shortages and extra costs"</code></pre>
+<p>The audit editor opened for the correct transaction with its fields populated. After changing a charge and saving, the review reopened for <code>#INV-9002</code> with the updated evidence.</p>
+<p><strong>Cleanup applied:</strong> <code>openReturnAuditFromReview()</code> now also calls <code>closeServiceReport()</code> so the service report no longer stays open behind the audit editor (which could be mistaken for the wrong modal opening). Cache-buster raised to <code>?v=64</code>.</p>
+<hr />
+<h2>6. Business rules and state machine</h2>
+<h3>Review status (derived, <code>returnReviewState</code>)</h3>
+<div class="table-wrap"><table><thead><tr><th>Status</th><th>Meaning</th></tr></thead><tbody><tr><td><code>LOCKED</code></td><td>Invoice is not <code>RETURNED</code>.</td></tr><tr><td><code>PENDING</code></td><td>Returned; audit needs a reviewer decision (or approval is stale).</td></tr><tr><td><code>APPROVED</code></td><td>Reviewer signed off on this exact audit snapshot.</td></tr><tr><td><code>PAID</code></td><td>Deposit payout already recorded.</td></tr><tr><td><code>MISSING</code></td><td>Invoice could not be found.</td></tr></tbody></table></div>
+<h3>Payout lifecycle (<code>returnReview</code> + <code>depositStatus</code>)</h3>
+<pre class="code"><code>PENDING --(checklist + approve)--&gt; APPROVED --(record payout)--&gt; PAID
+   ^                                   |                            |
+   |                                   |                            +--&gt; payoutClosed (CLOSED)
+   +----------- revoke (reason) -------+</code></pre>
+<h3>Permission matrix (current build)</h3>
+<div class="table-wrap"><table><thead><tr><th>Invoice state</th><th>Deposit</th><th>Edit transaction</th><th>Change status</th><th>Review / approve</th><th>Edit audit</th><th>Payout</th></tr></thead><tbody><tr><td>CONFIRMED / OUT_ON_HIRE / PENDING</td><td>HELD</td><td>✅</td><td>✅</td><td>—</td><td>—</td><td>🔒 requires RETURNED</td></tr><tr><td>RETURNED</td><td>HELD (pending review)</td><td>✅</td><td>✅</td><td>✅</td><td>✅</td><td>🔒 until approved</td></tr><tr><td>RETURNED</td><td>HELD (approved)</td><td>✅ (editing invalidates approval via fingerprint)</td><td>✅</td><td>—</td><td>✅</td><td>✅</td></tr><tr><td>RETURNED</td><td>REFUNDED</td><td>❌ hidden/blocked</td><td>❌ blocked</td><td>❌</td><td>❌ locked</td><td>❌ already paid</td></tr><tr><td>Any</td><td>REFUNDED + payoutClosed</td><td>❌</td><td>❌</td><td>❌</td><td>❌</td><td>❌ closed</td></tr></tbody></table></div>
+<h3>Audit fingerprint behaviour</h3>
+<p><code>returnAuditSignature()</code> hashes the reviewable evidence. <code>buildReturnReport()</code> recomputes it and only treats a saved approval as valid when the signatures match. Therefore any edit to quantities, conditions, charges, notes, or fees automatically invalidates a prior approval and returns the invoice to <code>PENDING</code>.</p>
+<hr />
+<h2>7. File-by-file change summary</h2>
+<div class="table-wrap"><table><thead><tr><th>File</th><th>Changes</th></tr></thead><tbody><tr><td><code>index.html</code></td><td>Review-audit container; “Edit audit” button in the review modal; <code>review-actions</code> footer class; cache-busters <code>?v=64</code>.</td></tr><tr><td><code>js/invoices.js</code></td><td><code>editInvoiceAsSuperAdmin</code> block for <code>RETURNED</code>+<code>REFUNDED</code>; <code>canEditInvoice</code> in the All Invoices table; <code>canEditRefund</code> in the deposits table; <code>updateInvoiceStatusFromModal</code> status-change block.</td></tr><tr><td><code>js/report.js</code></td><td><code>returnReviewAuditMarkup()</code>; injection in <code>openReturnReview()</code>; <code>openReturnAuditFromReview()</code>; <code>openReturnAudit(invoiceNo)</code>; reopen-review flow in <code>saveReturnAudit()</code>; <code>returnAuditFromReview</code> flag; window exports.</td></tr><tr><td><code>js/app.js</code></td><td><code>edit-audit-from-review</code> action handler.</td></tr><tr><td><code>css/main.css</code></td><td>Review audit table, condition pills, shortfall/remarks styles, internal scroll, wider review modal, footer button alignment.</td></tr></tbody></table></div>
+<p><strong>Storage:</strong> <code>localStorage['kwr_saved_invoices']</code> via <code>loadMasterInvoices()</code> / <code>persistMasterInvoices()</code> (<code>js/state.js</code>).</p>
+<hr />
+<h2>8. Verification and testing performed</h2>
+<p><strong>Static checks</strong></p>
+<ul><li><code>node --check js/report.js</code>, <code>js/app.js</code>, <code>js/invoices.js</code> — all clean.</li><li>String/guard presence checks for all four lock fixes.</li></ul>
+<p><strong>Browser checks (headless Chrome via CDP)</strong></p>
+<div class="table-wrap"><table><thead><tr><th>Test</th><th>Result</th></tr></thead><tbody><tr><td>Review modal order: audit → summary → checklist</td><td>✅</td></tr><tr><td>Damaged/short item flagged (<code>3 / 4</code>, DAMAGED, cost, remark)</td><td>✅</td></tr><tr><td>Desktop 1440px layout</td><td>✅</td></tr><tr><td>Mobile 390px layout, no horizontal overflow, audit scrolls</td><td>✅</td></tr><tr><td>Edit audit opens audit editor for the reviewed invoice</td><td>✅ (<code>#INV-9002</code> confirmed)</td></tr><tr><td>Save audit → review reopens with updated evidence</td><td>✅ (₦8,000 → ₦12,500 reflected; totals recalculated)</td></tr><tr><td>Cancel/close audit → no stray modal / flag reset</td><td>✅</td></tr><tr><td>Service report closed when entering audit from review</td><td>✅</td></tr><tr><td>Edited transaction after RETURNED+REFUNDED blocked</td><td>✅ guard + hidden buttons</td></tr><tr><td>Status change from RETURNED+REFUNDED blocked</td><td>✅ guard</td></tr></tbody></table></div>
+<p><strong>Environment</strong></p>
+<ul><li>Dev server: <code>http://127.0.0.1:8000</code></li><li>Headless Chrome CDP: <code>127.0.0.1:9222</code></li><li>Node: v26.13.0 (global <code>WebSocket</code> used for CDP scripts)</li></ul>
+<hr />
+<h2>9. Current status</h2>
+<ul><li><strong>All requested prompts completed.</strong> No open blockers.</li><li>The review gate, payout trail, balance-due tracking, revoke workflow, and post-payout locks are implemented and verified.</li><li>The document/print pipeline is unchanged and still fits one A4 page.</li><li>Demo data shows <code>#INV-0003</code> / <code>#LEG-0001</code> as returned invoices for manual testing.</li></ul>
+<hr />
+<h2>10. Notes, limitations, and recommendations</h2>
+<ol><li><strong>Payment gateway not connected.</strong> “Record payout” records the payout and reference; it does not call a payment API.</li><li><strong>Local-first persistence.</strong> Review and payout data live on the invoice objects in <code>localStorage</code>; there is no Supabase schema for reviews. Clearing site data resets the workflow.</li><li><strong>Approved-then-edited returns.</strong> Editing a transaction after approval is allowed, but the fingerprint makes the approval stale (back to <code>PENDING</code>) — by design.</li><li><strong>Settled returns are immutable.</strong> <code>RETURNED</code> + <code>REFUNDED</code> invoices are locked from editing, status change, audit edits, and refund-detail edits. If a change is genuinely required, it should be handled as a new adjustment/exception rather than by unlocking the record.</li><li><strong>Recommended next steps (optional):</strong></li></ol>
+<ul><li>Move review/payout records into Supabase tables for cross-device auditability.</li><li>Add a server-side action log (who approved/paid/revoked, when).</li><li>Wire a real payout provider behind “Record payout” with idempotency keys.</li><li>Add automated regression tests around the permission matrix.</li></ul>
+<hr />
+<h2>Appendix A — Prompt log (verbatim, Phase 2)</h2>
+<ol><li>“i am still able to edit a transaction after it has been returned and deposit paid, fix”</li><li>“i can still change the status from returned to any other”</li><li>“i think the review should come before the checklist pls advice” <em>(with screenshot of the Review return modal)</em></li><li>“include an edit button inside review return modal”</li><li>“clicking on the edit button open the return edit modal of that transaction for editing”</li></ol>
+<p><em>(Phase 1 prompts were captured in the earlier session summary and are represented by the completed-work list in Section 4.)</em></p>
+<h2>Appendix B — Cache-buster history</h2>
+<div class="table-wrap"><table><thead><tr><th>Version</th><th>Change</th></tr></thead><tbody><tr><td><code>v=60</code></td><td>Review gate baseline (Phase 1).</td></tr><tr><td><code>v=61</code></td><td>Inline audit evidence table in the review modal.</td></tr><tr><td><code>v=62</code> / <code>v=63</code></td><td>“Edit audit” action and reopen-review flow.</td></tr><tr><td><code>v=64</code></td><td>Audit-from-review closes the service report; final Phase 2 build.</td></tr></tbody></table></div>
+</div></body>
+</html>

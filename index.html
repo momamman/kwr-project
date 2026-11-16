@@ -14,7 +14,7 @@
     rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="css/main.css?v=69" />
 </head>
 
 <body>
@@ -29,7 +29,7 @@
         </div>
         <div class="brand-name">
           <h1>Kitchenware</h1>
-          <p>R E N T A L S &nbsp; L T D &nbsp; • &nbsp; E R P &nbsp; & &nbsp; H I R E &nbsp; S Y S T E M</p>
+          <p>Rentals Ltd<br />ERP &amp; Hire System</p>
         </div>
       </div>
 
@@ -39,47 +39,68 @@
           <span id="user-role-badge" class="role-badge">USER</span>
         </div>
         <div class="demo-switcher-bar">
-          <span
-            style="font-size: 10px; text-transform: uppercase; color: rgba(255,255,255,0.7); margin-right: 4px; font-weight: 700; letter-spacing: 0.5px;">Switch
-            Demo:</span>
-          <button onclick="auth.loginAsDemo('super_admin')" class="demo-btn"
-            style="background: #D97706; color: #FFFFFF;">👑 Super Admin</button>
-          <button onclick="auth.loginAsDemo('data_entry')" class="demo-btn" style="background: var(--forest); color: #fff;">📝 Data
+          <span class="demo-switcher-label">Switch Demo:</span>
+          <button data-action="demo" data-role="super_admin" class="demo-btn demo-btn-super">👑 Super Admin</button>
+          <button data-action="demo" data-role="data_entry" class="demo-btn demo-btn-data">📝 Data
             Entry</button>
-          <button onclick="auth.loginAsDemo('invoicing')" class="demo-btn" style="background: var(--berry); color: #fff;">🧾
+          <button data-action="demo" data-role="invoicing" class="demo-btn demo-btn-invoice">🧾
             Invoicing</button>
-          <button onclick="auth.loginAsDemo('analyst')" class="demo-btn" style="background: var(--espresso); color: #fff;">📊
+          <button data-action="demo" data-role="analyst" class="demo-btn demo-btn-analyst">📊
             Analyst</button>
-          <a href="admin-users.html" id="admin-panel-link"
-            style="display: none; color: #FDE68A; text-decoration: none; font-weight: 700; margin-left: 8px; font-size: 11.5px;">⚙️
+          <a href="admin-users.html" id="admin-panel-link" class="demo-link">⚙️
             Manage Users</a>
-          <button onclick="auth.logout()" class="demo-btn"
-            style="background: rgba(255,255,255,0.18); margin-left: 4px;">Logout</button>
+          <button data-action="logout" class="demo-btn demo-btn-logout">Logout</button>
         </div>
       </div>
     </header>
 
-    <!-- ── CORE NAVIGATION TABS BAR ── -->
-    <nav class="nav-tabs-container">
-      <button class="tab-btn active" id="btn-tab-invoicing" onclick="switchTab('invoicing')">
-        <span>🧾</span> 1. Invoicing & Transactions
-      </button>
-      <button class="tab-btn" id="btn-tab-all-invoices" onclick="switchTab('all-invoices')">
-        <span>📋</span> 2. All Invoices (Admin Only)
-      </button>
-      <button class="tab-btn" id="btn-tab-data-entry" onclick="switchTab('data-entry')">
-        <span>📝</span> 3. Data Entry (Legacy DB)
-      </button>
-      <button class="tab-btn" id="btn-tab-analysis" onclick="switchTab('analysis')">
-        <span>📊</span> 4. Analysis & AI Insights
-      </button>
-      <button class="tab-btn" id="btn-tab-deposits" onclick="switchTab('deposits')">
-        <span>💳</span> 5. Refundable Deposits (Admin)
-      </button>
-    </nav>
+    <!-- ── PRIMARY NAVIGATION ── -->
+    <div class="app-shell">
+      <nav class="app-nav" aria-label="Primary navigation">
+        <div class="app-nav-head">
+          <span class="app-nav-eyebrow">Workspace</span>
+          <button type="button" class="palette-trigger" data-action="open-palette"
+            aria-keyshortcuts="Control+K Meta+K" title="Search pages, actions and invoices">
+            <span class="palette-trigger-icon" aria-hidden="true">🔍</span>
+            <span class="palette-trigger-text">Quick jump</span>
+            <kbd class="palette-trigger-kbd">⌘K</kbd>
+          </button>
+        </div>
 
-    <!-- ── CARD MAIN CONTAINER ── -->
-    <main class="card">
+        <div class="app-nav-links" role="tablist" aria-orientation="vertical">
+          <button class="tab-btn active" id="btn-tab-invoicing" data-tab="invoicing" role="tab"
+            aria-selected="true" aria-controls="tab-invoicing">
+            <span class="tab-ico" aria-hidden="true">🧾</span>
+            <span class="tab-label">Invoicing &amp; Transactions</span>
+          </button>
+          <button class="tab-btn" id="btn-tab-all-invoices" data-tab="all-invoices" role="tab"
+            aria-selected="false" aria-controls="tab-all-invoices" title="Admin only">
+            <span class="tab-ico" aria-hidden="true">📋</span>
+            <span class="tab-label">All Invoices</span>
+          </button>
+          <button class="tab-btn" id="btn-tab-data-entry" data-tab="data-entry" role="tab"
+            aria-selected="false" aria-controls="tab-data-entry">
+            <span class="tab-ico" aria-hidden="true">📝</span>
+            <span class="tab-label">Data Entry <span class="tab-sublabel">Legacy</span></span>
+          </button>
+          <button class="tab-btn" id="btn-tab-analysis" data-tab="analysis" role="tab"
+            aria-selected="false" aria-controls="tab-analysis">
+            <span class="tab-ico" aria-hidden="true">📊</span>
+            <span class="tab-label">Analysis &amp; AI Insights</span>
+          </button>
+          <button class="tab-btn" id="btn-tab-deposits" data-tab="deposits" role="tab"
+            aria-selected="false" aria-controls="tab-deposits" title="Admin only">
+            <span class="tab-ico" aria-hidden="true">💳</span>
+            <span class="tab-label">Refundable Deposits</span>
+          </button>
+        </div>
+
+        <div class="app-nav-foot">
+          <span class="app-nav-hint">Press <kbd>Ctrl</kbd> <kbd>K</kbd> to jump anywhere</span>
+        </div>
+      </nav>
+
+      <main class="card">
 
       <!-- =================================================================== -->
       <!-- TAB 1: INVOICING & TRANSACTIONS                                     -->
@@ -87,39 +108,40 @@
       <div id="tab-invoicing" class="tab-content active">
 
         <!-- Read Only Lock Banner (For Fulfilled Transactions) -->
-        <div id="readOnlyBanner" class="read-only-banner" style="display: none;">
+        <div id="readOnlyBanner" class="read-only-banner">
           <span>🔒 READ ONLY MODE: This transaction is fulfilled/completed. Only the Super Admin can modify completed
             transactions.</span>
-          <button id="btnUnlockSuperAdmin" class="btn btn-red" style="padding: 4px 12px; font-size: 11px;"
-            onclick="enableSuperAdminEdit()">👑 Super Admin Unlock Edit</button>
+          <button id="btnUnlockSuperAdmin" class="btn btn-red btn-sm"
+            data-action="super-admin-edit">👑 Super Admin Unlock Edit</button>
         </div>
 
         <!-- Form Title & Order No Top Bar -->
-        <div class="top-bar">
+        <div class="top-bar compact">
           <div class="form-title">
-            <h2>Invoice & Rental Order</h2>
-            <p>Create, manage, and process active rental transactions, invoices, and deposits.</p>
+            <h2>Invoice &amp; Rental Order</h2>
+            <input type="hidden" id="fOrderNo" value="#INV-0005">
           </div>
 
-          <div style="display: flex; gap: 12px; align-items: center;">
-            <button class="btn btn-ghost"
-              style="padding: 10px 16px; border-color: var(--red); color: var(--red); font-weight: 800; font-size: 13px;"
-              onclick="createNewTransaction()">➕ New Transaction</button>
-            <div class="order-no-box">
-              <label>Invoice No.</label>
-              <div class="order-badge" id="badgeNo">#INV-0005</div>
-              <input type="hidden" id="fOrderNo" value="#INV-0005">
-            </div>
+          <div class="toolbar">
+            <div class="order-meta" id="invOrderMeta">Invoice <span class="order-meta-value" id="badgeNo">#INV-0005</span></div>
+            <button class="btn btn-ghost btn-forest-ghost" data-action="new-invoice">➕ New Transaction</button>
+            <button type="button" class="btn btn-ghost btn-icon" data-action="print-invoice"
+              title="Print invoice — untick “Headers and footers” for a clean page" aria-label="Print invoice">🖨️</button>
+            <button type="button" class="btn btn-ghost btn-icon" data-action="share-invoice" title="Share invoice"
+              aria-label="Share invoice" aria-haspopup="menu" aria-expanded="false">📤</button>
+            <button type="button" class="btn btn-ghost btn-icon" data-action="open-print-archive" title="Print archive"
+              aria-label="Open print archive">🗃️</button>
+            <button type="button" class="btn btn-ghost btn-icon btn-icon-danger" id="btnClearInvoice"
+              data-action="clear-invoicing" title="Clear form" aria-label="Clear form">🗑️</button>
           </div>
         </div>
 
         <!-- Customer Details with Real-time Autocomplete -->
-        <div class="section-title">👤 Customer Information</div>
+        <div class="section-title eyebrow">👤 Customer Information</div>
         <div class="grid-3">
           <div class="field">
             <label>Customer Name / Company</label>
-            <input type="text" id="fCustomerName" placeholder="Type to search customer DB..."
-              oninput="autocompleteCustomer(this.value)" autocomplete="off">
+            <input type="text" id="fCustomerName" placeholder="Type to search customer DB..." autocomplete="off">
             <div class="autocomplete-results" id="customerResults"></div>
           </div>
           <div class="field">
@@ -131,7 +153,13 @@
             <input type="email" id="fEmail" placeholder="customer@example.com">
           </div>
         </div>
+        <div class="field field-full">
+          <label>Customer / Company Address</label>
+          <input type="text" id="fCustomerAddress" placeholder="Customer or company address">
+        </div>
 
+        <!-- Rental Items Table -->
+        <div class="section-title eyebrow">📦 Rental Items & Inventory Builder</div>
         <div class="grid-2">
           <div class="field">
             <label>Delivery / Event Address</label>
@@ -139,63 +167,63 @@
           </div>
           <div class="field">
             <label>Rental Period (Start Date & End Date)</label>
-            <div style="display: flex; gap: 8px;">
-              <input type="date" id="fStartDate" style="flex:1;">
-              <input type="date" id="fEndDate" style="flex:1;">
+            <div class="date-input-row">
+              <input type="date" id="fStartDate" />
+              <input type="date" id="fEndDate" />
             </div>
           </div>
         </div>
-
-        <!-- Rental Items Table -->
-        <div class="section-title">📦 Rental Items & Inventory Builder</div>
-        <table>
+        <table class="items-table">
           <thead>
             <tr>
-              <th style="width: 80px;">Qty</th>
+              <th class="w-80">Qty</th>
               <th>Item Description (Real-time Inventory Search)</th>
-              <th style="width: 140px;">Daily Rate (₦)</th>
-              <th style="width: 140px;">Charge (₦)</th>
-              <th style="width: 50px;"></th>
+              <th class="w-140">Daily Rate (₦)</th>
+              <th class="w-140">Charge (₦)</th>
+              <th class="w-50"></th>
             </tr>
           </thead>
           <tbody id="itemsBody">
             <!-- Rows injected dynamically -->
           </tbody>
         </table>
-        <button class="btn btn-ghost" onclick="addRow()">+ Add Item Row</button>
+        <button class="btn btn-ghost" data-action="add-row">+ Add Item Row</button>
 
-        <!-- Financial Totals Summary -->
+        <!-- Financial Totals Summary — inputs sit beside the values they feed -->
         <div class="summary-box">
-          <div class="grid-2">
-            <div>
-              <div class="field" style="margin-bottom: 12px;">
-                <label>Caution / Refundable Deposit (₦)</label>
-                <input type="number" id="fCaution" placeholder="0.00" oninput="recalc()">
+          <div class="summary-strip">
+            <div class="summary-adjust">
+              <div class="summary-field">
+                <label for="fCaution">Caution Deposit (₦)</label>
+                <input type="number" id="fCaution" placeholder="0.00">
               </div>
-              <div class="field">
-                <label>Logistics / Transport Charge (₦)</label>
-                <input type="number" id="fTransport" placeholder="0.00" oninput="recalc()">
+              <div class="summary-field">
+                <label for="fTransport">Transport Charge (₦)</label>
+                <input type="number" id="fTransport" placeholder="0.00">
               </div>
             </div>
-            <div>
-              <div class="summary-row"><span>Subtotal Rental Charge:</span> <strong id="sRental">₦ 0.00</strong></div>
-              <div class="summary-row"><span>VAT (7.5%):</span> <strong id="sVat">₦ 0.00</strong></div>
-              <div class="summary-row"><span>Caution Deposit (Non-Taxable):</span> <strong id="sCaution">₦ 0.00</strong>
+
+            <div class="summary-figures">
+              <div class="summary-row"><span>Subtotal Rental</span> <strong id="sRental">₦ 0.00</strong></div>
+              <div class="summary-row"><span>VAT (7.5%)</span> <strong id="sVat">₦ 0.00</strong></div>
+              <div class="summary-row" title="Caution deposit is non-taxable"><span>Caution Deposit</span> <strong
+                  id="sCaution">₦ 0.00</strong>
               </div>
-              <div class="summary-row"><span>Logistics & Transport:</span> <strong id="sTransport">₦ 0.00</strong></div>
-              <div class="summary-row total"><span>Total Payable:</span> <strong id="sTotal">₦ 0.00</strong></div>
-              <div style="margin-top: 8px; font-size: 11px; font-weight: 700; color: var(--muted);" id="sWords">Zero
-                Naira only</div>
+              <div class="summary-row"><span>Transport Charge</span> <strong id="sTransport">₦ 0.00</strong>
+              </div>
+            </div>
+
+            <div class="summary-total">
+              <div class="summary-row total"><span>Total Payable</span> <strong id="sTotal">₦ 0.00</strong></div>
+              <div class="summary-note" id="sWords">Zero Naira only</div>
             </div>
           </div>
         </div>
 
         <!-- Transaction Actions -->
-        <div style="margin-top: 24px; display: flex; gap: 12px; justify-content: flex-end;">
-          <button type="button" class="btn btn-ghost" id="btnClearInvoice" onclick="handleClearInvoicing()">🗑️ Clear</button>
-          <button class="btn btn-ghost" onclick="printInvoice()">🖨️ Print Invoice</button>
-          <button class="btn btn-red" id="btnSaveInvoice" onclick="saveInvoice('fulfilled')">💾 Save & Fulfill
-            Invoice</button>
+        <div class="actions-row">
+          <button class="btn btn-red" id="btnSaveInvoice" data-action="save-invoice" data-status="fulfilled">💾 Save &amp;
+            Fulfill Invoice</button>
         </div>
 
       </div>
@@ -210,24 +238,19 @@
             <p>Comprehensive list view of all transactions across all statuses. Super Admin can edit any transaction.
             </p>
           </div>
-          <div style="text-align: right;">
-            <span
-              style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 11px;">👑
-              ADMIN & SUPER ADMIN ONLY</span>
+          <div class="text-right">
+            <span class="badge-flag">👑 ADMIN & SUPER ADMIN ONLY</span>
           </div>
         </div>
 
         <!-- Filter Controls & Search -->
-        <div class="search-bar-container" style="margin-bottom: 20px;">
+        <div class="search-bar-container mb-20">
           <div class="search-input-wrapper">
             <span class="search-icon">🔍</span>
             <input type="text" id="allInvoicesSearchInput"
-              placeholder="Filter invoices by Invoice #, Customer, Delivery Address, or Amount..."
-              oninput="filterAllInvoicesTable(this.value)">
+              placeholder="Filter invoices by Invoice #, Customer, Address, or Amount...">
           </div>
-          <select id="invoiceStatusFilter"
-            style="border: 1.5px solid var(--border); padding: 11px 14px; border-radius: 8px; font-weight: 700; font-size: 13px;"
-            onchange="filterInvoiceByStatus(this.value)">
+          <select id="invoiceStatusFilter" class="select-filter">
             <option value="ALL">All Transactions</option>
             <option value="NEW">⚡ New / Active Orders Only</option>
             <option value="LEGACY">📜 Legacy Ingested Records Only</option>
@@ -239,22 +262,31 @@
         </div>
 
         <!-- All Invoices Table List -->
-        <table>
+        <div class="table-scroll">
+          <table>
           <thead>
             <tr>
-              <th style="width: 110px;">Invoice No.</th>
-              <th style="width: 110px;">Date</th>
+              <th class="w-110">Invoice No.</th>
+              <th class="w-110">Date</th>
               <th>Customer Name</th>
-              <th style="width: 260px;">Delivery Address (Text Wrapped)</th>
-              <th style="width: 130px;">Total Rental Cost</th>
-              <th style="width: 160px;">Transaction Status</th>
-              <th style="width: 140px; text-align: center;">Actions</th>
+              <th class="w-260">Customer / Company Address</th>
+              <th class="w-150">Total Rental Cost</th>
+              <th class="w-160">Transaction Status</th>
+              <th class="w-220 th-center">Actions</th>
             </tr>
           </thead>
           <tbody id="allInvoicesListBody">
             <!-- Injected dynamically -->
           </tbody>
-        </table>
+          </table>
+        </div>
+
+        <div class="empty-state" id="allInvoicesEmpty" hidden>
+          <div class="empty-state-icon">🗂️</div>
+          <h3 class="empty-state-title" id="allInvoicesEmptyTitle">No invoices yet</h3>
+          <p class="empty-state-text" id="allInvoicesEmptyText">Create your first rental invoice and it will appear here.</p>
+          <button class="btn btn-red" data-action="new-invoice" id="allInvoicesEmptyAction">➕ Create your first invoice</button>
+        </div>
       </div>
 
       <!-- =================================================================== -->
@@ -267,30 +299,33 @@
             <p>Backfill historical paper transaction receipts into the database with automatic customer indexing and inventory tracking.</p>
           </div>
 
-          <div style="display: flex; gap: 12px; align-items: center;">
-            <button class="btn btn-ghost"
-              style="padding: 10px 16px; border-color: var(--forest); color: var(--forest-dark); font-weight: 800; font-size: 13px;"
-              onclick="createNewLegacyEntry()">➕ New Legacy Entry</button>
-            <div class="order-no-box" style="border-color: #A4C4B5;">
-              <label style="color: var(--forest);">Legacy Receipt / Ref #</label>
-              <div class="order-badge" id="legBadgeNo" style="color: var(--forest-dark); border-color: #A4C4B5; background: var(--forest-light);">#LEG-0002</div>
+          <div class="action-row">
+            <button type="button" class="icon-btn-sm legacy-info-toggle" id="legacyInfoToggle"
+              data-action="show-legacy-info" aria-label="Show legacy ingestion help"
+              title="Show legacy ingestion help" hidden>ⓘ</button>
+            <button class="btn btn-ghost btn-forest-ghost" data-action="new-legacy">➕ New Legacy Entry</button>
+            <div class="order-no-box legacy">
+              <label>Legacy Receipt / Ref #</label>
+              <div class="order-badge legacy" id="legBadgeNo">#LEG-0002</div>
               <input type="hidden" id="legRefNo" value="#LEG-0002">
             </div>
           </div>
         </div>
 
-        <div
-          style="background: var(--forest-light); border: 1.5px solid #A4C4B5; border-radius: 12px; padding: 16px 20px; margin-bottom: 24px; color: var(--forest-dark); font-size: 13px;">
-          💡 <strong>Legacy Ingestion Mode:</strong> Enter historical receipts below. Saving automatically indexes the client in the <strong>Customer Table</strong>, updates the <strong>Inventory Catalog</strong>, and tags the transaction with <strong>is_legacy = TRUE</strong> in the database orders table.
+        <div class="info-banner" id="legacyInfoBanner">
+          <div class="info-banner-text">
+            💡 <strong>Legacy Ingestion Mode:</strong> Enter historical receipts below. Saving automatically indexes the client in the <strong>Customer Table</strong>, updates the <strong>Inventory Catalog</strong>, and tags the transaction with <strong>is_legacy = TRUE</strong> in the database orders table.
+          </div>
+          <button type="button" class="info-banner-close" data-action="dismiss-legacy-info"
+            aria-label="Dismiss legacy ingestion info" title="Dismiss">✕</button>
         </div>
 
         <!-- Section 1: Customer Details with Real-time Autocomplete -->
-        <div class="section-title">👤 Customer Information (Auto-Indexed to Database)</div>
+        <div class="section-title eyebrow">👤 Customer Information (Auto-Indexed to Database)</div>
         <div class="grid-3">
           <div class="field">
             <label>Customer Name / Company</label>
-            <input type="text" id="legCustomerName" placeholder="Type to search or enter customer..."
-              oninput="autocompleteCustomer(this.value, 'legacy')" autocomplete="off" required>
+            <input type="text" id="legCustomerName" placeholder="Type to search or enter customer..." autocomplete="off" required>
             <div class="autocomplete-results" id="legCustomerResults"></div>
           </div>
           <div class="field">
@@ -310,42 +345,42 @@
           </div>
           <div class="field">
             <label>Historical Rental Period (Start & End Date)</label>
-            <div style="display: flex; gap: 8px;">
-              <input type="date" id="legDate" style="flex:1;" required>
-              <input type="date" id="legEndDate" style="flex:1;">
+            <div class="date-input-row">
+              <input type="date" id="legDate" required />
+              <input type="date" id="legEndDate" />
             </div>
           </div>
         </div>
 
         <!-- Section 2: Rental Items & Inventory Builder -->
-        <div class="section-title">📦 Rental Items & Inventory Builder (Legacy Breakdown)</div>
-        <table>
+        <div class="section-title eyebrow">📦 Rental Items & Inventory Builder (Legacy Breakdown)</div>
+        <table class="items-table">
           <thead>
             <tr>
-              <th style="width: 80px;">Qty</th>
+              <th class="w-80">Qty</th>
               <th>Item Description (Real-time Inventory Search)</th>
-              <th style="width: 140px;">Daily Rate (₦)</th>
-              <th style="width: 140px;">Charge (₦)</th>
-              <th style="width: 50px;"></th>
+              <th class="w-140">Daily Rate (₦)</th>
+              <th class="w-140">Charge (₦)</th>
+              <th class="w-50"></th>
             </tr>
           </thead>
           <tbody id="legItemsBody">
             <!-- Dynamic Legacy Item Rows -->
           </tbody>
         </table>
-        <button class="btn btn-ghost" onclick="addLegacyRow()">+ Add Item Row</button>
+        <button class="btn btn-ghost" data-action="add-legacy-row">+ Add Item Row</button>
 
         <!-- Section 3: Financial Totals Summary -->
         <div class="summary-box">
           <div class="grid-2">
             <div>
-              <div class="field" style="margin-bottom: 12px;">
+              <div class="field mb-12">
                 <label>Caution Deposit Ingested (₦)</label>
-                <input type="number" id="legCaution" placeholder="0.00" oninput="recalcLegacy()">
+                <input type="number" id="legCaution" placeholder="0.00">
               </div>
               <div class="field">
                 <label>Logistics / Transport Charge (₦)</label>
-                <input type="number" id="legTransport" placeholder="0.00" oninput="recalcLegacy()">
+                <input type="number" id="legTransport" placeholder="0.00">
               </div>
             </div>
             <div>
@@ -354,55 +389,64 @@
               <div class="summary-row"><span>Caution Deposit (Non-Taxable):</span> <strong id="legCautionSummary">₦ 0.00</strong></div>
               <div class="summary-row"><span>Logistics & Transport:</span> <strong id="legTransportSummary">₦ 0.00</strong></div>
               <div class="summary-row total"><span>Total Historical Payable:</span> <strong id="legTotal">₦ 0.00</strong></div>
-              <div style="margin-top: 8px; font-size: 11px; font-weight: 700; color: var(--muted);" id="legWords">Zero Naira only</div>
+              <div class="summary-note" id="legWords">Zero Naira only</div>
             </div>
           </div>
         </div>
 
         <!-- Section 4: Original Physical Receipt Attachment -->
-        <div style="margin-top: 24px;">
-          <div class="section-title">📎 Physical Receipt Scan / Photo Attachment (Optional)</div>
-          <div class="legacy-dropzone" id="legacyDropzone" onclick="document.getElementById('legReceiptFile').click()">
-            <div style="font-size: 28px;">📄</div>
-            <div style="font-weight: 700; font-size: 13.5px; color: var(--text);">Click or drag & drop physical receipt image here</div>
-            <div style="font-size: 11.5px; color: var(--muted);">Supports PNG, JPG, JPEG, WEBP scanned paper receipts</div>
-            <input type="file" id="legReceiptFile" accept="image/*" style="display: none;" onchange="handleLegacyReceiptFile(this.files)">
+        <div class="mt-24">
+          <div class="section-title eyebrow">📎 Physical Receipt Scan / Photo Attachment (Optional)</div>
+          <div class="legacy-dropzone" id="legacyDropzone" data-action="open-legacy-file">
+            <div class="dropzone-icon">📄</div>
+            <div class="dropzone-text">Click or drag & drop physical receipt image here</div>
+            <div class="dropzone-sub">Supports PNG, JPG, JPEG, WEBP scanned paper receipts</div>
+            <input type="file" id="legReceiptFile" accept="image/*" class="file-input-hidden" />
           </div>
           <div id="legacyReceiptPreview"></div>
         </div>
 
         <!-- Ingestion Actions -->
-        <div style="margin-top: 28px; display: flex; gap: 12px; justify-content: flex-end;">
-          <button type="button" class="btn btn-ghost" id="btnClearLegacy" onclick="handleClearLegacy()">🗑️ Clear</button>
-          <button class="btn btn-ghost" onclick="printLegacyRecord()">🖨️ Print Legacy Record</button>
-          <button class="btn btn-forest" id="btnSaveLegacy" onclick="saveLegacyInvoice()">📥 Ingest Legacy Record to DB</button>
+        <div class="actions-row mt-28">
+          <button type="button" class="btn btn-ghost" id="btnClearLegacy" data-action="clear-legacy">🗑️ Clear</button>
+          <button class="btn btn-ghost" data-action="print-legacy">🖨️ Print Legacy Record</button>
+          <button class="btn btn-forest" id="btnSaveLegacy" data-action="save-legacy">📥 Ingest Legacy Record to DB</button>
         </div>
 
         <!-- Section 5: Recently Ingested Legacy Logs -->
-        <div style="margin-top: 48px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px;">
-            <div class="section-title" style="margin-bottom: 0;">📋 Recently Ingested Legacy Records (Live Synced to DB)</div>
-            <div class="search-input-wrapper" style="max-width: 300px;">
+        <div class="mt-48">
+          <div class="row-between-wrap mb-16">
+            <div class="section-title eyebrow mb-0">📋 Recently Ingested Legacy Records (Live Synced to DB)</div>
+            <div class="search-input-wrapper max-w-300">
               <span class="search-icon">🔍</span>
-              <input type="text" id="legacySearchInput" placeholder="Filter legacy records..." oninput="filterLegacyLogsTable(this.value)">
+              <input type="text" id="legacySearchInput" placeholder="Filter legacy records...">
             </div>
           </div>
-          <table>
+          <div class="table-scroll">
+            <table>
             <thead>
               <tr>
-                <th style="width: 120px;">Ref #</th>
-                <th style="width: 110px;">Date</th>
+                <th class="w-120">Ref #</th>
+                <th class="w-110">Date</th>
                 <th>Customer Name</th>
                 <th>Items Breakdown Summary</th>
-                <th style="width: 130px;">Total Cost</th>
-                <th style="width: 120px;">Order Type</th>
-                <th style="width: 100px; text-align: center;">Actions</th>
+                <th class="w-130">Total Cost</th>
+                <th class="w-120">Order Type</th>
+                <th class="w-100 th-center">Actions</th>
               </tr>
             </thead>
             <tbody id="legacyLogsBody">
               <!-- Dynamically populated -->
             </tbody>
-          </table>
+            </table>
+          </div>
+
+          <div class="empty-state" id="legacyLogsEmpty" hidden>
+            <div class="empty-state-icon">📜</div>
+            <h3 class="empty-state-title" id="legacyLogsEmptyTitle">No legacy records yet</h3>
+            <p class="empty-state-text" id="legacyLogsEmptyText">Ingest a historical paper receipt above and it will be listed here.</p>
+            <button class="btn btn-forest" data-action="new-legacy" id="legacyLogsEmptyAction">📝 Start a legacy entry</button>
+          </div>
         </div>
       </div>
 
@@ -421,39 +465,37 @@
         <div class="kpi-grid">
           <div class="kpi-card">
             <div class="kpi-label">Total Gross Revenue</div>
-            <div class="kpi-val">₦ 4,850,000</div>
+            <div class="kpi-val" id="kpiGrossRevenue">₦ 4,850,000</div>
             <div class="kpi-trend">↑ 18.4% vs last month</div>
           </div>
           <div class="kpi-card">
             <div class="kpi-label">Fulfilled Transactions</div>
-            <div class="kpi-val">142 Orders</div>
+            <div class="kpi-val" id="kpiFulfilledTransactions">142 Orders</div>
             <div class="kpi-trend">↑ 12 new this week</div>
           </div>
           <div class="kpi-card">
             <div class="kpi-label">Active Items Out</div>
-            <div class="kpi-val">1,280 Units</div>
-            <div class="kpi-trend" style="color: var(--info);">84% utilization rate</div>
+            <div class="kpi-val" id="kpiActiveItemsOut">1,280 Units</div>
+            <div class="kpi-trend trend-info">84% utilization rate</div>
           </div>
           <div class="kpi-card">
             <div class="kpi-label">Pending Refund Deposits</div>
-            <div class="kpi-val">₦ 375,000</div>
-            <div class="kpi-trend" style="color: var(--warning);">15 active deposits held</div>
+            <div class="kpi-val" id="kpiPendingDeposits">₦ 375,000</div>
+            <div class="kpi-trend trend-warning">15 active deposits held</div>
           </div>
         </div>
 
         <!-- Interactive AI Business Assistant -->
         <div class="ai-box">
           <h3>✨ AI Executive Business Assistant</h3>
-          <p style="font-size: 13px; color: rgba(255,255,255,0.8);">Select an automated report prompt or type an query
+          <p class="text-light">Select an automated report prompt or type an query
             below for real-time inventory and revenue intelligence.</p>
           <div class="ai-chips">
-            <div class="ai-chip" onclick="runAiAnalysis('inventory')">💡 Summarize Top Inventory Bottlenecks</div>
-            <div class="ai-chip" onclick="runAiAnalysis('deposits')">💡 Analyze Refund Deposit Exposure</div>
-            <div class="ai-chip" onclick="runAiAnalysis('forecast')">💡 30-Day Demand Forecast</div>
+            <div class="ai-chip" data-action="ai" data-ai="inventory">💡 Summarize Top Inventory Bottlenecks</div>
+            <div class="ai-chip" data-action="ai" data-ai="deposits">💡 Analyze Refund Deposit Exposure</div>
+            <div class="ai-chip" data-action="ai" data-ai="forecast">💡 30-Day Demand Forecast</div>
           </div>
-          <div id="aiResponseArea"
-            style="margin-top: 16px; background: rgba(0,0,0,0.3); border-radius: 8px; padding: 14px; font-size: 13px; line-height: 1.6; display: none;">
-          </div>
+          <div id="aiResponseArea" class="ai-response"></div>
         </div>
 
         <!-- Visual Charts Grid -->
@@ -477,13 +519,11 @@
         <div class="top-bar">
           <div class="form-title">
             <h2>💳 Refundable Deposits Management</h2>
-            <p>Review caution deposits, return status, and execute API deposit payouts. Refund payouts require RETURNED
+            <p>Review caution deposits, return status, and record deposit payouts. Refund payouts require RETURNED
               transaction status.</p>
           </div>
-          <div style="text-align: right;">
-            <span
-              style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 20px; font-weight: 800; font-size: 11px;">👑
-              SUPER ADMIN PAYOUT PRIVILEGE</span>
+          <div class="text-right">
+            <span class="badge-flag">👑 SUPER ADMIN PAYOUT PRIVILEGE</span>
           </div>
         </div>
 
@@ -492,7 +532,7 @@
           <div class="kpi-card">
             <div class="kpi-label">Total Held Deposits</div>
             <div class="kpi-val" id="kpiHeldDeposits">₦ 120,000</div>
-            <div class="kpi-trend" style="color: var(--warning);">Held pending item inspection</div>
+            <div class="kpi-trend trend-warning">Held pending item inspection</div>
           </div>
           <div class="kpi-card">
             <div class="kpi-label">Total Refunded</div>
@@ -502,43 +542,51 @@
           <div class="kpi-card">
             <div class="kpi-label">Eligible Returned Payouts</div>
             <div class="kpi-val" id="kpiEligiblePayouts">1 Eligible</div>
-            <div class="kpi-trend" style="color: var(--success);">Items returned intact</div>
+            <div class="kpi-trend trend-success">Return reviewed &amp; approved</div>
           </div>
           <div class="kpi-card">
             <div class="kpi-label">Locked Active Rentals</div>
             <div class="kpi-val" id="kpiLockedRentals">3 Transactions</div>
-            <div class="kpi-trend" style="color: var(--muted);">Requires RETURNED status</div>
+            <div class="kpi-trend trend-muted">Awaiting return or review</div>
           </div>
         </div>
 
         <!-- Filter Controls & Search -->
-        <div class="search-bar-container" style="margin-bottom: 20px;">
+        <div class="search-bar-container mb-20">
           <div class="search-input-wrapper">
             <span class="search-icon">🔍</span>
-            <input type="text" id="depositsSearchInput" placeholder="Filter deposits by Invoice # or Customer Name..."
-              oninput="renderDepositsTable()">
+            <input type="text" id="depositsSearchInput" placeholder="Filter deposits by Invoice # or Customer Name...">
           </div>
         </div>
 
         <!-- Deposits Table -->
-        <table>
+        <div class="table-scroll">
+          <table>
           <thead>
             <tr>
-              <th style="width: 120px;">Invoice #</th>
+              <th class="w-120">Invoice #</th>
               <th>Customer Name</th>
-              <th style="width: 150px;">Deposit Amount (₦)</th>
-              <th style="width: 180px;">Transaction Status</th>
-              <th style="width: 130px;">Deposit Status</th>
-              <th style="width: 220px; text-align: center;">Payout Action</th>
+              <th class="w-150">Deposit Amount (₦)</th>
+              <th class="w-180">Transaction Status</th>
+              <th class="w-130">Deposit Status</th>
+              <th class="w-220 th-center">Payout Action</th>
             </tr>
           </thead>
           <tbody id="depositsListBody">
             <!-- Injected dynamically -->
           </tbody>
-        </table>
+          </table>
+        </div>
+
+        <div class="empty-state" id="depositsEmpty" hidden>
+          <div class="empty-state-icon">💳</div>
+          <h3 class="empty-state-title" id="depositsEmptyTitle">No refundable deposits</h3>
+          <p class="empty-state-text" id="depositsEmptyText">Deposits appear here once an invoice includes a caution deposit.</p>
+        </div>
       </div>
 
     </main><!-- /.card -->
+    </div><!-- /.app-shell -->
 
   </div><!-- /.page -->
 
@@ -547,54 +595,49 @@
   <!-- ======================================================================= -->
   <div class="modal-overlay" id="invoiceDetailModal">
     <div class="modal-card">
-      <div
-        style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid var(--red); padding-bottom: 16px; margin-bottom: 20px;">
+      <div class="modal-header">
         <div>
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <h2 style="font-family: 'Outfit', sans-serif; font-size: 20px; font-weight: 800; color: var(--red);"
-              id="modalInvoiceNo">INVOICE #INV-0001</h2>
+          <div class="row row-gap-8">
+            <h2 class="modal-title" id="modalInvoiceNo">INVOICE #INV-0001</h2>
             <span id="modalInvoiceTypeBadge"></span>
           </div>
-          <p style="font-size: 12px; color: var(--muted); margin-top: 2px;" id="modalInvoiceDate">Issued: 2026-09-26</p>
+          <p class="modal-sub" id="modalInvoiceDate">Issued: 2026-09-26</p>
         </div>
-        <div style="display: flex; align-items: center; gap: 10px;">
-          <select id="modalInvoiceStatusSelect"
-            style="font-weight: 700; padding: 6px 12px; border-radius: 6px; font-size: 12px; border: 1.5px solid var(--border);"
-            onchange="updateInvoiceStatusFromModal(this.value)">
+        <div class="row row-gap-10">
+          <select id="modalInvoiceStatusSelect" class="select-inline">
             <option value="CONFIRMED">Confirmed (not gone out)</option>
             <option value="OUT_ON_HIRE">Out on hire</option>
             <option value="RETURNED">Returned</option>
             <option value="PENDING">Pending</option>
           </select>
-          <button onclick="closeInvoiceDetailModal()"
-            style="border:none; background:none; font-size: 22px; cursor:pointer; color: var(--muted);">✕</button>
+          <button data-action="close-invoice-modal" class="icon-btn">✕</button>
         </div>
       </div>
 
       <!-- Customer & Delivery Info -->
-      <div
-        style="background: #f8fafc; border: 1.5px solid var(--border); border-radius: 12px; padding: 18px; margin-bottom: 20px;">
+      <div class="info-panel">
         <div class="grid-2">
           <div>
-            <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--muted);">Customer /
+            <div class="panel-label">Customer /
               Billed To</div>
-            <div style="font-size: 15px; font-weight: 800; color: var(--text); margin-top: 4px;" id="modalCustomerName">
+            <div class="panel-title" id="modalCustomerName">
               Amina Bello</div>
-            <div style="font-size: 12.5px; color: var(--muted);" id="modalCustomerContact">+234 809 266 0766 ·
+            <div class="panel-sub" id="modalCustomerContact">+234 809 266 0766 ·
               amina@example.com</div>
           </div>
           <div>
-            <div style="font-size: 10px; font-weight: 800; text-transform: uppercase; color: var(--muted);">Delivery
-              Venue / Address</div>
-            <div style="font-size: 13px; font-weight: 600; color: var(--text); margin-top: 4px; line-height: 1.4;"
-              id="modalCustomerAddress">Plot 541A, 4TH Avenue, Gwarimpa Housing Estate, Gwarimpa, Abuja FCT</div>
+            <div class="panel-label">Customer / Company Address</div>
+            <div class="panel-desc" id="modalCustomerAddress">Plot 541A, 4TH Avenue, Gwarimpa Housing Estate, Gwarimpa, Abuja FCT</div>
+            <div class="panel-label" style="margin-top: 10px;">Delivery / Event Address</div>
+            <div class="panel-desc" id="modalDeliveryAddress">Plot 541A, 4TH Avenue, Gwarimpa Housing Estate, Gwarimpa, Abuja FCT</div>
           </div>
         </div>
       </div>
 
       <!-- Itemized List Table -->
       <div class="section-title">📦 Itemized Rental Charges</div>
-      <table>
+      <div class="table-scroll">
+        <table>
         <thead>
           <tr>
             <th>Qty</th>
@@ -606,10 +649,11 @@
         <tbody id="modalInvoiceItemsBody">
           <!-- Injected -->
         </tbody>
-      </table>
+        </table>
+      </div>
 
       <!-- Totals Summary -->
-      <div class="summary-box" style="margin-top: 10px;">
+      <div class="summary-box mt-10">
         <div class="summary-row"><span>Subtotal Rental Charge:</span> <strong id="modalSubtotal">₦ 0.00</strong></div>
         <div class="summary-row"><span>VAT (7.5%):</span> <strong id="modalVat">₦ 0.00</strong></div>
         <div class="summary-row"><span>Refundable Caution Deposit (Non-Taxable):</span> <strong id="modalCaution">₦
@@ -618,11 +662,235 @@
         <div class="summary-row total"><span>Total Payable:</span> <strong id="modalGrandTotal">₦ 0.00</strong></div>
       </div>
 
-      <div style="margin-top: 24px; display: flex; gap: 10px; justify-content: flex-end;">
-        <button class="btn btn-ghost" onclick="window.print()">🖨️ Print Confirmation Invoice</button>
-        <button class="btn btn-red" id="modalSuperAdminEditBtn"
-          onclick="editInvoiceAsSuperAdmin(activeSelectedInvoice.invoiceNo)">✏️ Edit Transaction</button>
-        <button class="btn btn-ghost" onclick="closeInvoiceDetailModal()">Close Window</button>
+      <div class="modal-actions modal-actions-icons">
+        <button class="btn btn-ghost action-icon" data-action="print-confirmation-invoice"
+          title="Print confirmation invoice" aria-label="Print confirmation invoice">
+          <span class="action-icon-glyph" aria-hidden="true">🖨️</span>
+          <span class="action-icon-label">Print</span>
+        </button>
+        <button class="btn btn-ghost action-icon" id="btnViewReturnReport" data-action="view-return-report" hidden
+          title="View service &amp; return report" aria-label="View service and return report">
+          <span class="action-icon-glyph" aria-hidden="true">📋</span>
+          <span class="action-icon-label">Report</span>
+        </button>
+        <button class="btn btn-ghost action-icon" data-action="share-invoice" title="Share invoice"
+          aria-label="Share invoice" aria-haspopup="menu" aria-expanded="false">
+          <span class="action-icon-glyph" aria-hidden="true">📤</span>
+          <span class="action-icon-label">Share</span>
+        </button>
+        <button class="btn btn-red action-icon action-icon-primary" data-action="edit-invoice"
+          title="Edit transaction" aria-label="Edit transaction">
+          <span class="action-icon-glyph" aria-hidden="true">✏️</span>
+          <span class="action-icon-label">Edit</span>
+        </button>
+        <button class="btn btn-ghost action-icon" data-action="close-invoice-modal"
+          title="Close window" aria-label="Close window">
+          <span class="action-icon-glyph" aria-hidden="true">✕</span>
+          <span class="action-icon-label">Close</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- PRINT ARCHIVE MODAL                                                     -->
+  <!-- ======================================================================= -->
+  <div class="modal-overlay" id="printArchiveModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">🗃️ Print archive</h2>
+          <p class="modal-sub">Snapshots of documents you have saved or printed. Tip: untick “Headers and footers” in the browser print dialog for a clean page.</p>
+        </div>
+        <button data-action="close-print-archive" class="icon-btn" aria-label="Close print archive">✕</button>
+      </div>
+
+      <div class="archive-list" id="printArchiveList"></div>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" data-action="close-print-archive">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- SERVICE & RETURN REPORT MODAL                                           -->
+  <!-- ======================================================================= -->
+  <div class="modal-overlay" id="serviceReportModal">
+    <div class="modal-card report-modal">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">📋 Service &amp; return report</h2>
+          <p class="modal-sub" id="serviceReportSub">Returned-items inspection and service summary.</p>
+        </div>
+        <button data-action="close-service-report" class="icon-btn" aria-label="Close service report">✕</button>
+      </div>
+
+      <div class="report-doc-frame" id="serviceReportBody"></div>
+
+      <div class="modal-actions">
+        <button class="btn btn-success" id="btnApproveReturn" data-action="open-return-review" hidden>✓ Approve return</button>
+        <button class="btn btn-ghost btn-revoke" id="btnRevokeReturn" data-action="open-return-revoke" hidden>↩ Revoke approval</button>
+        <button class="btn btn-ghost" data-action="edit-return-audit">✏️ Edit audit</button>
+        <button class="btn btn-red" data-action="print-service-report">🖨️ Print report</button>
+        <button class="btn btn-ghost" data-action="close-service-report">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- RETURN REVIEW GATE MODAL                                                -->
+  <!-- ======================================================================= -->
+  <div class="modal-overlay" id="returnReviewModal">
+    <div class="modal-card modal-card-sm review-modal">
+      <div class="row-between mb-20">
+        <h3 class="modal-subtitle">✅ Review return</h3>
+        <button data-action="close-return-review" class="icon-btn-sm" aria-label="Close return review">✕</button>
+      </div>
+
+      <div class="modal-text" id="returnReviewIntro">
+        Review the returned-items audit below, then confirm the checklist before releasing the deposit payout.
+      </div>
+
+      <div class="review-audit" id="returnReviewAudit"></div>
+
+      <div class="review-summary" id="returnReviewSummary"></div>
+
+      <div class="review-checklist">
+        <label class="review-check" for="reviewCheckItems">
+          <input type="checkbox" id="reviewCheckItems">
+          <span>Every line item has its good, damaged and lost units recorded.</span>
+        </label>
+        <label class="review-check" for="reviewCheckCharges">
+          <input type="checkbox" id="reviewCheckCharges">
+          <span>Damage, shortage and extra charges have been verified and explained.</span>
+        </label>
+        <label class="review-check" for="reviewCheckRefund">
+          <input type="checkbox" id="reviewCheckRefund">
+          <span>The refund due has been checked against the deposit and charges.</span>
+        </label>
+      </div>
+
+      <div class="field">
+        <label for="reviewNotes">Reviewer notes (optional)</label>
+        <textarea id="reviewNotes" rows="3" maxlength="300"
+          placeholder="e.g. Deposit adjusted for two chipped dishes; customer advised."></textarea>
+      </div>
+
+      <div class="modal-actions review-actions">
+        <button class="btn btn-ghost review-edit-btn" data-action="edit-audit-from-review">✏️ Edit audit</button>
+        <button class="btn btn-ghost" data-action="close-return-review">Cancel</button>
+        <button class="btn btn-success" data-action="approve-return">✓ Approve return</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- REVOKE RETURN APPROVAL MODAL                                            -->
+  <!-- ======================================================================= -->
+  <div class="modal-overlay" id="returnRevokeModal">
+    <div class="modal-card modal-card-sm review-modal">
+      <div class="row-between mb-20">
+        <h3 class="modal-subtitle">↩ Revoke return approval</h3>
+        <button data-action="close-return-revoke" class="icon-btn-sm" aria-label="Close revoke dialog">✕</button>
+      </div>
+
+      <div class="modal-text" id="returnRevokeIntro">
+        Revoke the approval and lock the payout until the return is reviewed again.
+      </div>
+
+      <div class="field">
+        <label for="returnRevokeReason">Reason for revoking approval</label>
+        <textarea id="returnRevokeReason" rows="3" maxlength="300"
+          placeholder="e.g. Damage assessment was revised after a second inspection."></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button class="btn btn-ghost" data-action="close-return-revoke">Cancel</button>
+        <button class="btn btn-red" data-action="confirm-return-revoke">↩ Revoke approval</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================================= -->
+  <!-- RETURN AUDIT MODAL                                                      -->
+  <!-- ======================================================================= -->
+  <div class="modal-overlay" id="returnAuditModal">
+    <div class="modal-card audit-modal">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">✏️ Return audit</h2>
+          <p class="modal-sub" id="returnAuditSub">Record item condition, damages and extra costs.</p>
+        </div>
+        <button data-action="close-return-audit" class="icon-btn" aria-label="Close return audit">✕</button>
+      </div>
+
+      <div class="section-title">📦 Condition of returned items</div>
+      <p class="audit-hint">
+        Enter how many units came back <strong>Good</strong> and how many were <strong>Damaged</strong>.
+        <strong>Lost</strong> is calculated automatically as <em>Out − Good − Damaged</em>.
+      </p>
+      <div class="table-scroll">
+        <table class="audit-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Item</th>
+              <th class="th-center">Out</th>
+              <th class="th-center">Good</th>
+              <th class="th-center">Damaged</th>
+              <th class="th-center">Lost</th>
+              <th class="th-center">Damage (₦)</th>
+              <th class="th-center">Lost (₦)</th>
+              <th>Remarks</th>
+            </tr>
+          </thead>
+          <tbody id="returnAuditItemsBody"></tbody>
+          <tfoot>
+            <tr class="audit-totals">
+              <td colspan="2">Totals</td>
+              <td class="audit-num" id="auditTotalOut">0</td>
+              <td class="audit-num" id="auditTotalGood">0</td>
+              <td class="audit-num" id="auditTotalDamaged">0</td>
+              <td class="audit-num" id="auditTotalLost">0</td>
+              <td class="audit-num" id="auditTotalDamageCharge">—</td>
+              <td class="audit-num" id="auditTotalLostCharge">—</td>
+              <td id="auditTotalsFlag" class="audit-totals-flag"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="audit-fields">
+        <div class="field">
+          <label for="auditLateFee">Late return fee (₦)</label>
+          <input type="number" id="auditLateFee" min="0" step="0.01" placeholder="0.00" />
+        </div>
+        <div class="field">
+          <label for="auditCleaningFee">Cleaning / restoration (₦)</label>
+          <input type="number" id="auditCleaningFee" min="0" step="0.01" placeholder="0.00" />
+        </div>
+        <div class="field">
+          <label for="auditOtherLabel">Other charge</label>
+          <input type="text" id="auditOtherLabel" maxlength="60" placeholder="e.g. Replacement fee" />
+        </div>
+        <div class="field">
+          <label for="auditOtherAmount">Other charge (₦)</label>
+          <input type="number" id="auditOtherAmount" min="0" step="0.01" placeholder="0.00" />
+        </div>
+      </div>
+
+      <div class="field field-full">
+        <label for="auditServiceNotes">Service report notes</label>
+        <textarea id="auditServiceNotes" rows="4"
+          placeholder="Leave blank to use the standard service summary generated from the invoice."></textarea>
+      </div>
+
+      <div class="audit-preview" id="returnAuditPreview"></div>
+
+      <div class="modal-actions">
+        <button class="btn btn-red" data-action="save-return-audit">💾 Save audit</button>
+        <button class="btn btn-ghost" data-action="close-return-audit">Cancel</button>
       </div>
     </div>
   </div>
@@ -631,33 +899,39 @@
   <!-- REFUND PAYOUT MODAL (SUPER ADMIN ONLY)                                  -->
   <!-- ======================================================================= -->
   <div class="modal-overlay" id="refundModal">
-    <div class="modal-card" style="max-width: 500px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <h3 style="font-size: 16px; font-weight: 800; color: var(--red);">💳 Refundable Deposit Payout</h3>
-        <button onclick="closeRefundModal()"
-          style="border:none; background:none; font-size: 18px; cursor:pointer;">✕</button>
+    <div class="modal-card modal-card-sm">
+      <div class="row-between mb-20">
+        <h3 class="modal-subtitle" id="refundModalTitle">💳 Refundable Deposit Payout</h3>
+        <button data-action="close-refund-modal" class="icon-btn-sm" aria-label="Close payout dialog">✕</button>
       </div>
 
-      <div style="font-size: 13px; color: var(--muted); margin-bottom: 16px;">
-        Initiate deposit payout via payment gateway API. Accessible by <strong style="color: var(--red);">Super
+      <div class="modal-text" id="refundModalIntro">
+        Record the deposit payout after the return audit has been reviewed. Accessible by <strong class="text-red">Super
           Admin</strong> only.
       </div>
 
-      <div class="field" style="margin-bottom: 12px;">
-        <label>Target Invoice / Customer</label>
-        <input type="text" id="modalCustomerInfo" readonly style="background: #f8fafc;">
+      <div class="field mb-12">
+        <label for="modalCustomerInfo">Target Invoice / Customer</label>
+        <input type="text" id="modalCustomerInfo" readonly class="input-readonly">
       </div>
 
-      <div class="field" style="margin-bottom: 12px;">
-        <label>Refund Amount (₦)</label>
-        <input type="text" id="modalRefundAmount" readonly
-          style="background: #f8fafc; font-weight: 800; color: var(--red);">
+      <div class="field mb-12">
+        <label for="modalRefundAmount">Refund Amount (₦)</label>
+        <input type="number" id="modalRefundAmount" min="0" step="0.01" inputmode="decimal"
+          class="amount-strong text-red">
+        <div class="field-hint" id="refundApprovedHint"></div>
+      </div>
+
+      <div class="field mb-12" id="refundAdjustWrap" hidden>
+        <label for="modalAdjustReason">Reason for changing the approved refund</label>
+        <input type="text" id="modalAdjustReason" maxlength="120"
+          placeholder="Required when the paid amount differs from the approved refund">
       </div>
 
       <div class="grid-2">
         <div class="field">
-          <label>Bank Name</label>
-          <select id="modalBank">
+          <label for="modalBankName">Bank Name</label>
+          <select id="modalBankName">
             <option>Access Bank</option>
             <option>GTBank</option>
             <option>Zenith Bank</option>
@@ -666,27 +940,104 @@
           </select>
         </div>
         <div class="field">
-          <label>Account Number</label>
-          <input type="text" placeholder="0123456789">
+          <label for="modalAccountNumber">Account Number</label>
+          <input type="text" id="modalAccountNumber" inputmode="numeric" maxlength="10"
+            autocomplete="off" placeholder="10-digit account number">
         </div>
       </div>
 
-      <div style="margin-top: 24px; display: flex; gap: 10px; justify-content: flex-end;">
-        <button class="btn btn-ghost" onclick="closeRefundModal()">Cancel</button>
-        <button class="btn btn-success" onclick="processPayout()">Execute API Payout</button>
+      <div class="modal-actions">
+        <button class="btn btn-ghost" data-action="close-refund-modal">Cancel</button>
+        <button class="btn btn-success" id="refundPrimaryBtn" data-action="payout">Record payout</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sticky invoice total bar — appears when the totals panel is out of view -->
+  <div class="sticky-total" id="stickyTotal" aria-hidden="true">
+    <div class="sticky-total-inner">
+      <div class="sticky-total-breakdown">
+        <div class="sticky-total-item">
+          <span>Subtotal</span>
+          <strong id="stRental">₦ 0.00</strong>
+        </div>
+        <div class="sticky-total-item">
+          <span>VAT (7.5%)</span>
+          <strong id="stVat">₦ 0.00</strong>
+        </div>
+        <div class="sticky-total-item">
+          <span>Deposit</span>
+          <strong id="stCaution">₦ 0.00</strong>
+        </div>
+        <div class="sticky-total-item">
+          <span>Logistics</span>
+          <strong id="stTransport">₦ 0.00</strong>
+        </div>
+      </div>
+      <div class="sticky-total-main">
+        <div class="sticky-total-amount">
+          <span>Total Payable</span>
+          <strong id="stTotal">₦ 0.00</strong>
+        </div>
+        <button type="button" class="btn btn-red" id="btnStickySave" data-action="save-invoice"
+          data-status="fulfilled">💾 Save &amp; Fulfill</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── COMMAND PALETTE ── -->
+  <div class="palette-overlay" id="commandPalette" hidden>
+    <div class="palette-card" role="dialog" aria-modal="true" aria-label="Quick jump">
+      <div class="palette-search">
+        <span class="palette-search-icon" aria-hidden="true">🔍</span>
+        <input id="paletteInput" type="text" placeholder="Search pages, actions and invoices…"
+          autocomplete="off" spellcheck="false" aria-label="Search pages, actions and invoices"
+          aria-controls="paletteResults" aria-autocomplete="list" />
+        <kbd class="palette-esc">Esc</kbd>
+      </div>
+      <div class="palette-results" id="paletteResults" role="listbox" aria-label="Results"></div>
+      <div class="palette-foot">
+        <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+        <span><kbd>↵</kbd> run</span>
+        <span><kbd>Esc</kbd> close</span>
       </div>
     </div>
   </div>
 
   <div id="toast"></div>
 
+  <!-- ── SHARE MENU — anchored to the toolbar / modal share buttons ── -->
+  <div id="shareMenu" class="share-menu" role="menu" aria-label="Share invoice" hidden>
+    <div class="share-menu-hint">Share invoice</div>
+    <button type="button" class="share-menu-item" role="menuitem" data-share-channel="whatsapp">
+      <span class="share-icon">💬</span> WhatsApp
+    </button>
+    <button type="button" class="share-menu-item" role="menuitem" data-share-channel="email">
+      <span class="share-icon">✉️</span> Email
+    </button>
+    <button type="button" class="share-menu-item" role="menuitem" data-share-channel="copy">
+      <span class="share-icon">🔗</span> Copy summary
+    </button>
+  </div>
+
+  <!-- ── PRINT DOCUMENT (A4) — populated on demand, hidden on screen ── -->
+  <section id="printSheet" class="print-sheet" aria-hidden="true"></section>
+
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="js/db.js"></script>
-  <script src="js/auth.js"></script>
+  <script src="js/db.js?v=69"></script>
+  <script src="js/auth.js?v=69"></script>
 
-  <script src="js/utils.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/utils.js?v=69"></script>
+  <script src="js/state.js?v=69"></script>
+  <script src="js/invoices.js?v=69"></script>
+  <script src="js/legacy.js?v=69"></script>
+  <script src="js/charts.js?v=69"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+  <script src="js/print.js?v=69"></script>
+  <script src="js/report.js?v=69"></script>
+  <script src="js/palette.js?v=69"></script>
+  <script src="js/app.js?v=69"></script>
 </body>
 
 </html>
