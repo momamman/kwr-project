@@ -803,6 +803,16 @@ function approveReturnReview() {
   const balanceDue = Math.max(0, report.returnCharges - finance.depositApplied);
 
   persistMasterInvoices();
+  if (typeof syncInvoiceToSupabase === 'function') {
+    syncInvoiceToSupabase(inv).catch(e => console.warn('Approve return sync note:', e));
+  }
+  if (typeof logAuditAction === 'function') {
+    logAuditAction(inv.invoiceNo, 'RETURN_REVIEW_APPROVED', {
+      refundDue,
+      returnCharges: report.returnCharges,
+      auditSignature: report.auditSignature
+    });
+  }
   closeReturnReview();
   if (serviceReportInvoiceNo === inv.invoiceNo) renderServiceReport();
   if (typeof renderDepositsTable === 'function') renderDepositsTable();
@@ -907,6 +917,15 @@ function revokeReturnApproval() {
   delete inv.refundAmount;
 
   persistMasterInvoices();
+  if (typeof syncInvoiceToSupabase === 'function') {
+    syncInvoiceToSupabase(inv).catch(e => console.warn('Revoke return sync note:', e));
+  }
+  if (typeof logAuditAction === 'function') {
+    logAuditAction(inv.invoiceNo, 'RETURN_REVIEW_REVOKED', {
+      reason,
+      revokedReview: previous
+    });
+  }
   closeReturnRevoke();
   if (serviceReportInvoiceNo === inv.invoiceNo) renderServiceReport();
   if (typeof renderDepositsTable === 'function') renderDepositsTable();
@@ -1186,6 +1205,15 @@ function saveReturnAudit() {
 
   const fromReview = returnAuditFromReview;
   persistMasterInvoices();
+  if (typeof syncInvoiceToSupabase === 'function') {
+    syncInvoiceToSupabase(inv).catch(e => console.warn('Return audit sync note:', e));
+  }
+  if (typeof logAuditAction === 'function') {
+    logAuditAction(inv.invoiceNo, 'RETURN_AUDIT_SAVED', {
+      itemsCount: values.items.length,
+      hadApprovalReset: hadApproval
+    });
+  }
   closeReturnAudit();
   if (serviceReportInvoiceNo === inv.invoiceNo) renderServiceReport();
   syncReturnReportAction(inv);

@@ -314,27 +314,123 @@ async function saveCustomerToDb(cust) {
   return null;
 }
 
-async function insertOrderWithFallback(orderPayload) {
+async function logAuditAction(orderNo, action, details = {}) {
   try {
-    const res = await db.from('orders').insert(orderPayload);
+    const actorEmail = (typeof currentUser !== 'undefined' && currentUser?.email) || (typeof currentRole !== 'undefined' ? currentRole : 'system');
+    const actorId = (typeof currentUser !== 'undefined' && currentUser?.id) || null;
+    const actorRole = typeof currentRole !== 'undefined' ? currentRole : 'user';
+    const cleanNo = orderNo ? String(orderNo).replace(/^#INV-/, '').replace(/^#/, '') : null;
+
+    await db.from('audit_logs').insert({
+      order_no: cleanNo,
+      action,
+      actor_id: actorId && !actorId.startsWith('demo-') ? actorId : null,
+      actor_email: actorEmail,
+      actor_role: actorRole,
+      details: typeof details === 'object' && details !== null ? details : { info: details }
+    });
+  } catch (err) {
+    // Audit logging is non-blocking; warn without interrupting the user workflow
+    console.warn('Audit logging note:', err?.message || err);
+  }
+}
+
+async function upsertOrderWithFallback(orderPayload) {
+  try {
+    const cleanNo = String(orderPayload.order_no).replace(/^#/, '');
+    
+    // Check if order already exists in Supabase
+    const { data: existing, error: checkErr } = await db.from('orders')
+      .select('id, order_no')
+      .eq('order_no', cleanNo)
+      .limit(1);
+
+    const isUpdate = !checkErr && existing && existing.length > 0;
+
+    let res;
+    if (isUpdate) {
+      res = await db.from('orders').update(orderPayload).eq('order_no', cleanNo);
+    } else {
+      res = await db.from('orders').insert(orderPayload);
+    }
+
     if (!res.error) return res;
 
-    // Fallback if column is_legacy is not yet present in Supabase
+    // Graceful column fallback if schema migration 02 is not yet executed on remote DB
     if (res.error && res.error.message && res.error.message.includes('does not exist')) {
-      console.warn('Orders column fallback:', res.error.message);
+      console.warn('Orders column fallback, stripping unmigrated fields:', res.error.message);
       const fallbackPayload = { ...orderPayload };
-      delete fallbackPayload.is_legacy;
-      delete fallbackPayload.order_type;
+      
+      const optionalCols = [
+        'return_report', 'return_review', 'refund_amount', 'refund_bank',
+        'refunded_at', 'refunded_by', 'payout_adjustment', 'payout_closed',
+        'payout_closed_at', 'payout_closed_by', 'returned_at', 'review_revocations',
+        'is_legacy', 'order_type', 'updated_at'
+      ];
+      optionalCols.forEach(col => delete fallbackPayload[col]);
+
       if (orderPayload.is_legacy) {
         fallbackPayload.notes = (fallbackPayload.notes ? fallbackPayload.notes + ' ' : '') + '[LEGACY_INGESTION]';
       }
-      return await db.from('orders').insert(fallbackPayload);
+
+      if (isUpdate) {
+        return await db.from('orders').update(fallbackPayload).eq('order_no', cleanNo);
+      } else {
+        return await db.from('orders').insert(fallbackPayload);
+      }
     }
     return res;
   } catch (err) {
-    console.error('Insert order error:', err);
+    console.error('Upsert order error:', err);
     return { error: err };
   }
+}
+
+// Backwards-compatibility alias
+async function insertOrderWithFallback(orderPayload) {
+  return await upsertOrderWithFallback(orderPayload);
+}
+
+/**
+ * Unified persistence helper: transforms an in-memory invoice object
+ * and syncs all state (including return audit, review gate, and payouts) to Supabase.
+ */
+async function syncInvoiceToSupabase(inv) {
+  if (!inv || !inv.invoiceNo) return { error: new Error('Invalid invoice object') };
+  const cleanNo = inv.invoiceNo.replace('#INV-', '').replace(/^#/, '');
+
+  const payload = {
+    order_no: cleanNo,
+    order_date: inv.date || inv.startDate || new Date().toISOString().split('T')[0],
+    cust_name: inv.customerName || 'Customer',
+    telephone: inv.phone && inv.phone !== 'N/A' ? inv.phone : '',
+    email: inv.email && inv.email !== 'N/A' ? inv.email : '',
+    address: inv.address || inv.customerAddress || 'Local Delivery',
+    rental_total: Number(inv.subtotal) || 0,
+    caution_dep: Number(inv.caution) || 0,
+    transport: Number(inv.transport) || 0,
+    grand_total: Number(inv.totalCost) || 0,
+    items: Array.isArray(inv.items) ? inv.items : [],
+    status: inv.status || 'CONFIRMED',
+    deposit_status: inv.depositStatus || (inv.caution > 0 ? 'HELD' : 'N/A'),
+    is_legacy: Boolean(inv.isLegacy),
+    order_type: inv.isLegacy ? 'legacy' : 'new',
+    notes: inv.notes || (inv.isLegacy ? 'Legacy paper receipt ingestion' : 'Live system invoice'),
+    return_report: inv.returnReport || null,
+    return_review: inv.returnReview || null,
+    refund_amount: Number(inv.refundAmount) || 0,
+    refund_bank: inv.refundBank || null,
+    refunded_at: inv.refundedAt || null,
+    refunded_by: inv.refundedBy || null,
+    payout_adjustment: inv.payoutAdjustment || null,
+    payout_closed: Boolean(inv.payoutClosed),
+    payout_closed_at: inv.payoutClosedAt || null,
+    payout_closed_by: inv.payoutClosedBy || null,
+    returned_at: inv.returnedAt || null,
+    review_revocations: Array.isArray(inv.reviewRevocations) ? inv.reviewRevocations : []
+  };
+
+  return await upsertOrderWithFallback(payload);
 }
 
 async function fetchInvoicesFromSupabase() {
@@ -353,33 +449,76 @@ async function fetchInvoicesFromSupabase() {
             : `#INV-${String(order.order_no).padStart(4, '0')}`)
           : `#INV-0000`;
 
-        const exists = MASTER_INVOICES.find(i => i.invoiceNo === invNo);
-        if (!exists) {
-          MASTER_INVOICES.unshift({
-            invoiceNo: invNo,
-            date: order.order_date || (order.created_at ? order.created_at.split('T')[0] : '2026-09-26'),
-            customerName: order.cust_name || order.placed_by || 'Customer',
-            phone: order.telephone || 'N/A',
-            email: order.email || 'N/A',
-            address: order.address || 'Local Delivery',
-            totalCost: order.grand_total || order.rental_total || 0,
-            subtotal: order.rental_total || 0,
-            caution: order.caution_dep || 0,
-            transport: order.transport || 0,
-            status: order.status || 'CONFIRMED',
-            depositStatus: order.deposit_status || 'HELD',
-            isLegacy: Boolean(isLegacy),
-            items: Array.isArray(order.items) ? order.items : []
-          });
+        const existingIdx = MASTER_INVOICES.findIndex(i => i.invoiceNo === invNo);
+        const mappedOrder = {
+          invoiceNo: invNo,
+          date: order.order_date || (order.created_at ? order.created_at.split('T')[0] : '2026-09-26'),
+          customerName: order.cust_name || order.placed_by || 'Customer',
+          phone: order.telephone || 'N/A',
+          email: order.email || 'N/A',
+          address: order.address || 'Local Delivery',
+          totalCost: order.grand_total || order.rental_total || 0,
+          subtotal: order.rental_total || 0,
+          caution: order.caution_dep || 0,
+          transport: order.transport || 0,
+          status: order.status || 'CONFIRMED',
+          depositStatus: order.deposit_status || 'HELD',
+          isLegacy: Boolean(isLegacy),
+          items: Array.isArray(order.items) ? order.items : [],
+          returnReport: order.return_report && typeof order.return_report === 'object' && Object.keys(order.return_report).length > 0
+            ? order.return_report : undefined,
+          returnReview: order.return_review && typeof order.return_review === 'object' && Object.keys(order.return_review).length > 0
+            ? order.return_review : undefined,
+          refundAmount: order.refund_amount !== null && order.refund_amount !== undefined
+            ? Number(order.refund_amount) : undefined,
+          refundBank: order.refund_bank && typeof order.refund_bank === 'object' && Object.keys(order.refund_bank).length > 0
+            ? order.refund_bank : undefined,
+          refundedAt: order.refunded_at || undefined,
+          refundedBy: order.refunded_by || undefined,
+          payoutAdjustment: order.payout_adjustment || undefined,
+          payoutClosed: Boolean(order.payout_closed),
+          payoutClosedAt: order.payout_closed_at || undefined,
+          payoutClosedBy: order.payout_closed_by || undefined,
+          returnedAt: order.returned_at || undefined,
+          reviewRevocations: Array.isArray(order.review_revocations) ? order.review_revocations : []
+        };
+
+        if (existingIdx !== -1) {
+          // Merge Supabase updates with existing local invoice
+          const local = MASTER_INVOICES[existingIdx];
+          MASTER_INVOICES[existingIdx] = {
+            ...local,
+            ...mappedOrder,
+            // Keep local properties if Supabase record has null/undefined for returns/reviews
+            returnReport: mappedOrder.returnReport || local.returnReport,
+            returnReview: mappedOrder.returnReview || local.returnReview,
+            refundAmount: mappedOrder.refundAmount !== undefined ? mappedOrder.refundAmount : local.refundAmount,
+            refundBank: mappedOrder.refundBank || local.refundBank,
+            refundedAt: mappedOrder.refundedAt || local.refundedAt,
+            refundedBy: mappedOrder.refundedBy || local.refundedBy,
+            payoutAdjustment: mappedOrder.payoutAdjustment || local.payoutAdjustment,
+            payoutClosed: mappedOrder.payoutClosed || local.payoutClosed,
+            returnedAt: mappedOrder.returnedAt || local.returnedAt,
+            reviewRevocations: mappedOrder.reviewRevocations.length > 0 ? mappedOrder.reviewRevocations : (local.reviewRevocations || [])
+          };
+        } else {
+          MASTER_INVOICES.unshift(mappedOrder);
         }
       });
+
       persistMasterInvoices();
-      renderAllInvoicesTable(MASTER_INVOICES);
-      renderDepositsTable();
-      renderLegacyLogsTable();
-      updateDashboardMetrics();
+      if (typeof renderAllInvoicesTable === 'function') renderAllInvoicesTable(MASTER_INVOICES);
+      if (typeof renderDepositsTable === 'function') renderDepositsTable();
+      if (typeof renderLegacyLogsTable === 'function') renderLegacyLogsTable();
+      if (typeof updateDashboardMetrics === 'function') updateDashboardMetrics();
     }
   } catch (e) {
     console.log('Supabase sync note:', e);
   }
 }
+
+// Window exports
+window.syncInvoiceToSupabase = syncInvoiceToSupabase;
+window.upsertOrderWithFallback = upsertOrderWithFallback;
+window.logAuditAction = logAuditAction;
+window.fetchInvoicesFromSupabase = fetchInvoicesFromSupabase;

@@ -609,22 +609,14 @@ async function saveInvoice(status = 'CONFIRMED') {
     if (typeof archiveInvoiceSnapshot === 'function') archiveInvoiceSnapshot(newInvoiceObj);
 
     // 2. Persist to Supabase orders table with awaiting feedback
-    const res = await insertOrderWithFallback({
-      order_no: invoiceNo.replace('#INV-', ''),
-      order_date: startDate || new Date().toISOString().split('T')[0],
-      cust_name: customerName,
-      telephone: phone,
-      email: email,
-      address: address,
-      rental_total: subtotal,
-      caution_dep: caution,
-      transport: transport,
-      grand_total: grandTotal,
-      items: items,
-      is_legacy: false,
-      order_type: 'new',
-      notes: 'Live system invoice'
-    });
+    const res = await syncInvoiceToSupabase(newInvoiceObj);
+    if (typeof logAuditAction === 'function') {
+      logAuditAction(invoiceNo, existingIdx !== -1 ? 'ORDER_UPDATED' : 'ORDER_CREATED', {
+        grandTotal,
+        customerName,
+        itemsCount: items.length
+      });
+    }
 
     if (res && res.error) {
       console.warn('Supabase order insert note:', res.error);
@@ -728,8 +720,15 @@ async function updateInvoiceStatusFromModal(newStatus) {
   showToast(`Updated ${activeSelectedInvoice.invoiceNo} status to ${newStatus}`, 'success');
 
   try {
-    const cleanNo = activeSelectedInvoice.invoiceNo.replace('#INV-', '').replace('#', '');
-    await db.from('orders').update({ status: newStatus }).eq('order_no', cleanNo);
+    if (typeof syncInvoiceToSupabase === 'function') {
+      await syncInvoiceToSupabase(activeSelectedInvoice);
+    } else {
+      const cleanNo = activeSelectedInvoice.invoiceNo.replace('#INV-', '').replace('#', '');
+      await db.from('orders').update({ status: newStatus }).eq('order_no', cleanNo);
+    }
+    if (typeof logAuditAction === 'function') {
+      logAuditAction(activeSelectedInvoice.invoiceNo, 'STATUS_CHANGE', { newStatus });
+    }
   } catch (e) {
     console.warn('Status update sync note:', e);
   }
@@ -1108,6 +1107,7 @@ function saveRefundDetails() {
   renderDepositsTable();
   renderAllInvoicesTable(MASTER_INVOICES);
   if (typeof renderServiceReport === 'function') renderServiceReport();
+  if (typeof syncInvoiceToSupabase === 'function') syncInvoiceToSupabase(activeSelectedInvoice);
   showToast(`Payout details saved for ${activeSelectedInvoice.invoiceNo}`, 'success');
   closeRefundModal();
 }
@@ -1174,10 +1174,21 @@ async function processPayout() {
   renderAllInvoicesTable(MASTER_INVOICES);
   if (typeof renderServiceReport === 'function') renderServiceReport();
 
-  // Sync status with Supabase if order exists
+  // Sync status and payout trail with Supabase
   try {
-    const cleanNo = activeSelectedInvoice.invoiceNo.replace('#INV-', '').replace('#', '');
-    await db.from('orders').update({ deposit_status: 'REFUNDED' }).eq('order_no', cleanNo);
+    if (typeof syncInvoiceToSupabase === 'function') {
+      await syncInvoiceToSupabase(activeSelectedInvoice);
+    } else {
+      const cleanNo = activeSelectedInvoice.invoiceNo.replace('#INV-', '').replace('#', '');
+      await db.from('orders').update({ deposit_status: 'REFUNDED' }).eq('order_no', cleanNo);
+    }
+    if (typeof logAuditAction === 'function') {
+      logAuditAction(activeSelectedInvoice.invoiceNo, 'PAYOUT_RECORDED', {
+        amount: details.amount,
+        bank: details.bankName,
+        adjustment: activeSelectedInvoice.payoutAdjustment || null
+      });
+    }
   } catch (e) {
     console.warn('Payout sync note:', e);
   }
@@ -1213,6 +1224,17 @@ function closePayoutTransaction(invoiceNo) {
   inv.payoutClosedBy = currentUser?.email || currentRole;
   persistMasterInvoices();
   renderDepositsTable();
+
+  try {
+    if (typeof syncInvoiceToSupabase === 'function') {
+      await syncInvoiceToSupabase(inv);
+    }
+    if (typeof logAuditAction === 'function') {
+      logAuditAction(inv.invoiceNo, 'PAYOUT_CLOSED', { balanceDue });
+    }
+  } catch (e) {
+    console.warn('Close payout sync note:', e);
+  }
   if (balanceDue > 0) {
     showToast(
       `Transaction ${inv.invoiceNo} closed — ₦ ${balanceDue.toLocaleString('en-NG', { minimumFractionDigits: 2 })} balance remains flagged in All Invoices`,

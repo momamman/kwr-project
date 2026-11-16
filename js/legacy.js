@@ -277,23 +277,32 @@ async function saveLegacyInvoice() {
     // Keep an audit-ready snapshot of every ingested document for the archive.
     if (typeof archiveInvoiceSnapshot === 'function') archiveInvoiceSnapshot(legacyInvoiceObj);
 
-    // 3. Insert into Supabase orders table with awaiting feedback
-    const res = await insertOrderWithFallback({
-      order_no: refNo.replace(/^#/, ''),
-      order_date: legacyDate,
-      cust_name: customerName,
-      telephone: phone,
-      email: email,
-      address: address,
-      rental_total: subtotal,
-      caution_dep: caution,
-      transport: transport,
-      grand_total: grandTotal,
-      items: items,
-      is_legacy: true,
-      order_type: 'legacy',
-      notes: 'Legacy paper receipt ingestion'
-    });
+    // 3. Persist to Supabase orders table with awaiting feedback
+    const res = typeof syncInvoiceToSupabase === 'function'
+      ? await syncInvoiceToSupabase(legacyInvoiceObj)
+      : await insertOrderWithFallback({
+          order_no: refNo.replace(/^#/, ''),
+          order_date: legacyDate,
+          cust_name: customerName,
+          telephone: phone,
+          email: email,
+          address: address,
+          rental_total: subtotal,
+          caution_dep: caution,
+          transport: transport,
+          grand_total: grandTotal,
+          items: items,
+          is_legacy: true,
+          order_type: 'legacy',
+          notes: 'Legacy paper receipt ingestion'
+        });
+
+    if (typeof logAuditAction === 'function') {
+      logAuditAction(refNo, 'LEGACY_INGESTION', {
+        itemsCount: items.length,
+        totalCost: grandTotal
+      });
+    }
 
     if (res && res.error) {
       console.warn('Legacy order Supabase sync note:', res.error);
