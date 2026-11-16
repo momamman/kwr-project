@@ -1,17 +1,22 @@
 -- ==============================================================================
 -- Kitchenware Rentals (KWR) ERP Database Migration: 02
 -- Purpose: 
---   1. Add return-audit, review gate, deposit payout, and revocation columns to orders.
---   2. Create compliance audit_logs table for server-side traceability.
---   3. Create inventory_catalog table for dynamic item management.
---   4. Ensure profiles table and automatic auth trigger exist.
---   5. Implement Row-Level Security (RLS) and performance indexes.
+--   1. Ensure core workflow columns (status, deposit_status, is_legacy, order_type) exist.
+--   2. Add return-audit, review gate, deposit payout, and revocation columns to orders.
+--   3. Create compliance audit_logs table for server-side traceability.
+--   4. Create inventory_catalog table for dynamic item management.
+--   5. Ensure profiles table and automatic auth trigger exist.
+--   6. Implement Row-Level Security (RLS) and performance indexes.
 -- ==============================================================================
 
 -- ------------------------------------------------------------------------------
--- 1. ORDERS TABLE EXTENSION (Audits, Reviews, Payouts)
+-- 1. ORDERS TABLE EXTENSION (Workflow, Audits, Reviews, Payouts)
 -- ------------------------------------------------------------------------------
 ALTER TABLE public.orders
+  ADD COLUMN IF NOT EXISTS status VARCHAR(50) DEFAULT 'CONFIRMED',
+  ADD COLUMN IF NOT EXISTS deposit_status VARCHAR(50) DEFAULT 'HELD',
+  ADD COLUMN IF NOT EXISTS is_legacy BOOLEAN DEFAULT FALSE,
+  ADD COLUMN IF NOT EXISTS order_type VARCHAR(50) DEFAULT 'new',
   ADD COLUMN IF NOT EXISTS return_report JSONB DEFAULT '{}'::jsonb,
   ADD COLUMN IF NOT EXISTS return_review JSONB DEFAULT '{}'::jsonb,
   ADD COLUMN IF NOT EXISTS refund_amount NUMERIC(14, 2) DEFAULT 0.00,
@@ -26,6 +31,8 @@ ALTER TABLE public.orders
   ADD COLUMN IF NOT EXISTS review_revocations JSONB DEFAULT '[]'::jsonb,
   ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
 
+COMMENT ON COLUMN public.orders.status IS 'Order lifecycle status: CONFIRMED, OUT_ON_HIRE, RETURNED, PENDING, DRAFT, CANCELLED';
+COMMENT ON COLUMN public.orders.deposit_status IS 'Caution deposit status: HELD, REFUNDED, N/A';
 COMMENT ON COLUMN public.orders.return_report IS 'Evidence recorded during return audit: item conditions, damaged/lost charges, fees, and notes';
 COMMENT ON COLUMN public.orders.return_review IS 'Super Admin sign-off gate: approval status, refund due, auditor signature fingerprint, and notes';
 COMMENT ON COLUMN public.orders.refund_amount IS 'Final approved/paid refund amount released from caution deposit';
@@ -36,6 +43,7 @@ COMMENT ON COLUMN public.orders.payout_closed IS 'Flag indicating the return tra
 CREATE INDEX IF NOT EXISTS idx_orders_order_no ON public.orders(order_no);
 CREATE INDEX IF NOT EXISTS idx_orders_status ON public.orders(status);
 CREATE INDEX IF NOT EXISTS idx_orders_deposit_status ON public.orders(deposit_status);
+CREATE INDEX IF NOT EXISTS idx_orders_is_legacy ON public.orders(is_legacy);
 CREATE INDEX IF NOT EXISTS idx_orders_payout_closed ON public.orders(payout_closed);
 CREATE INDEX IF NOT EXISTS idx_orders_created_at ON public.orders(created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_orders_updated_at ON public.orders(updated_at DESC);
@@ -104,6 +112,14 @@ CREATE TABLE IF NOT EXISTS public.profiles (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- Ensure all columns exist on pre-existing profiles tables
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS email TEXT,
+  ADD COLUMN IF NOT EXISTS full_name TEXT,
+  ADD COLUMN IF NOT EXISTS role VARCHAR(32) DEFAULT 'user',
+  ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT now(),
+  ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+
 -- Function and trigger to auto-create profile when a user signs up via Supabase Auth
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
@@ -165,24 +181,23 @@ RETURNS TEXT AS $$
 $$ LANGUAGE sql STABLE SECURITY DEFINER;
 
 -- ORDERS POLICIES
+DROP POLICY IF EXISTS "Allow select for all" ON public.orders;
 DROP POLICY IF EXISTS "Allow select for authenticated and anon users" ON public.orders;
-CREATE POLICY "Allow select for authenticated and anon users"
+CREATE POLICY "Allow select for all"
   ON public.orders FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Allow insert and update for all" ON public.orders;
 DROP POLICY IF EXISTS "Allow insert/update for staff" ON public.orders;
-CREATE POLICY "Allow insert/update for staff"
+CREATE POLICY "Allow insert and update for all"
   ON public.orders FOR ALL
-  USING (
-    auth.role() = 'authenticated' OR auth.role() = 'anon'
-  )
-  WITH CHECK (
-    auth.role() = 'authenticated' OR auth.role() = 'anon'
-  );
+  USING (true)
+  WITH CHECK (true);
 
 -- CUSTOMERS POLICIES
+DROP POLICY IF EXISTS "Allow customer access for all" ON public.customers;
 DROP POLICY IF EXISTS "Allow customer access for staff" ON public.customers;
-CREATE POLICY "Allow customer access for staff"
+CREATE POLICY "Allow customer access for all"
   ON public.customers FOR ALL
   USING (true)
   WITH CHECK (true);
@@ -193,16 +208,17 @@ CREATE POLICY "Allow inventory read for all"
   ON public.inventory_catalog FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Allow inventory management" ON public.inventory_catalog;
 DROP POLICY IF EXISTS "Allow inventory management for admin" ON public.inventory_catalog;
-CREATE POLICY "Allow inventory management for admin"
+CREATE POLICY "Allow inventory management"
   ON public.inventory_catalog FOR ALL
-  USING (
-    auth.role() = 'authenticated'
-  );
+  USING (true)
+  WITH CHECK (true);
 
 -- AUDIT LOGS POLICIES
+DROP POLICY IF EXISTS "Allow select audit logs" ON public.audit_logs;
 DROP POLICY IF EXISTS "Allow select audit logs for admins and analysts" ON public.audit_logs;
-CREATE POLICY "Allow select audit logs for admins and analysts"
+CREATE POLICY "Allow select audit logs"
   ON public.audit_logs FOR SELECT
   USING (true);
 
@@ -217,7 +233,9 @@ CREATE POLICY "Allow users to read profiles"
   ON public.profiles FOR SELECT
   USING (true);
 
+DROP POLICY IF EXISTS "Allow users to manage profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Allow users to update own profile" ON public.profiles;
-CREATE POLICY "Allow users to update own profile"
-  ON public.profiles FOR UPDATE
-  USING (auth.uid() = id);
+CREATE POLICY "Allow users to manage profiles"
+  ON public.profiles FOR ALL
+  USING (true)
+  WITH CHECK (true);
