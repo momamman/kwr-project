@@ -1203,7 +1203,7 @@ async function processPayout() {
 }
 
 /* A completed payout can be closed, which clears it from the payouts list. */
-function closePayoutTransaction(invoiceNo) {
+async function closePayoutTransaction(invoiceNo) {
   if (currentRole !== 'super_admin' && currentRole !== 'admin') {
     showToast('Only Super Admin can close a payout', 'error');
     return;
