@@ -2,32 +2,35 @@
    Kitchenware Rentals Ltd — ERP & Order Management System
    MODULE: LEGACY — data entry, ingestion, logs
    ============================================================================== */
-function getNextSerialLegacyNo() {
-  let maxSeq = 0;
-  MASTER_INVOICES.forEach(inv => {
-    if (inv.isLegacy || (inv.invoiceNo && inv.invoiceNo.includes('LEG-'))) {
-      const match = inv.invoiceNo.match(/\d+/);
-      if (match) {
-        const num = parseInt(match[0], 10);
-        if (num > maxSeq) maxSeq = num;
-      }
-    }
-  });
-  const nextNum = maxSeq + 1;
-  return `#LEG-${nextNum.toString().padStart(4, '0')}`;
-}
-
 function createNewLegacyEntry() {
   clearLegacyForm();
-  const nextNo = getNextSerialLegacyNo();
+  refreshLegacyNumber(false);
+}
+
+// Same rule as invoices: the reference shown here is a projection of the highest
+// stored reference, so opening or refreshing the page never consumes one. The
+// real reference is allocated by the server when the record is ingested.
+function refreshLegacyNumber(showMessage) {
   const badge = document.getElementById('legBadgeNo');
   const hidden = document.getElementById('legRefNo');
-  if (badge) badge.textContent = nextNo;
-  if (hidden) hidden.value = nextNo;
+  if (hidden) hidden.value = '';
+  if (badge) badge.textContent = '…';
+  return projectNextLegacyNo().then(no => {
+    if (hidden) hidden.value = no;
+    if (badge) badge.textContent = no;
+    if (showMessage) showToast(`Next legacy reference will be ${no}`, 'success');
+    return no;
+  }).catch(err => {
+    if (hidden) hidden.value = '';
+    if (badge) badge.textContent = 'Assigned on save';
+    console.warn('Legacy reference projection unavailable:', err);
+    return null;
+  });
 }
 
 function handleClearLegacy() {
-  createNewLegacyEntry();
+  clearLegacyForm();
+  refreshLegacyNumber(false);
   showToast('All legacy data entry fields cleared');
 }
 
@@ -193,7 +196,9 @@ function clearLegacyFile() {
 }
 
 async function saveLegacyInvoice() {
-  const refNo = document.getElementById('legRefNo')?.value || getNextSerialLegacyNo();
+  // The reference on screen is only a projection. The authoritative reference is
+  // claimed from the server below, so a guessed or stale number can never be used.
+  const previewRefNo = (document.getElementById('legRefNo')?.value || '').trim();
   const customerName = (document.getElementById('legCustomerName')?.value || '').trim();
   const phone = (document.getElementById('legPhone')?.value || '').trim();
   const email = (document.getElementById('legEmail')?.value || '').trim();
@@ -237,8 +242,13 @@ async function saveLegacyInvoice() {
   }
 
   try {
-    // 1. Sync & persist customer details to the Supabase customer table
-    await saveCustomerToDb({
+    // 1. Claim the legacy reference from the server. This is the only place a
+    // reference is taken, so opened or abandoned forms never consume one.
+    const refNo = await allocateLegacyNo();
+    if (!refNo) throw new Error('The server did not return a legacy reference.');
+
+    // 2. Sync & persist customer details to the Supabase customer table
+    const customerId = await saveCustomerToDb({
       name: customerName,
       telephone: phone,
       email: email,
@@ -246,10 +256,11 @@ async function saveLegacyInvoice() {
       notes: `Legacy customer ingested from historical record ${refNo}`
     });
 
-    // 2. Build local Master Invoice Object with isLegacy = true
-    const existingIdx = MASTER_INVOICES.findIndex(i => i.invoiceNo === refNo);
+    // 3. Build local Master Invoice Object with isLegacy = true
     const legacyInvoiceObj = {
       invoiceNo: refNo,
+      isNew: true,
+      customerId: customerId || undefined,
       date: legacyDate,
       customerName,
       phone: phone || 'N/A',
@@ -266,49 +277,44 @@ async function saveLegacyInvoice() {
       items
     };
 
-    if (existingIdx !== -1) {
-      MASTER_INVOICES[existingIdx] = legacyInvoiceObj;
-    } else {
-      MASTER_INVOICES.unshift(legacyInvoiceObj);
+    // 4. Persist to Supabase FIRST — a legacy record is always an insert.
+    const res = await syncInvoiceToSupabase(legacyInvoiceObj);
+    if (res && res.error) {
+      console.error('Legacy order Supabase write failed:', res.error);
+      showToast(`Not ingested: ${res.error.message || 'Database write failed'}`, 'error');
+      return;
     }
 
+    // 5. Only now commit to local state.
+    const savedRefNo = legacyInvoiceObj.invoiceNo;
+    const replaceIdx = MASTER_INVOICES.findIndex(i => i.dbId && i.dbId === legacyInvoiceObj.dbId);
+    if (replaceIdx !== -1) {
+      MASTER_INVOICES[replaceIdx] = { ...MASTER_INVOICES[replaceIdx], ...legacyInvoiceObj, isNew: false };
+    } else {
+      MASTER_INVOICES.unshift({ ...legacyInvoiceObj, isNew: false });
+    }
     persistMasterInvoices();
 
     // Keep an audit-ready snapshot of every ingested document for the archive.
     if (typeof archiveInvoiceSnapshot === 'function') archiveInvoiceSnapshot(legacyInvoiceObj);
 
-    // 3. Persist to Supabase orders table with awaiting feedback
-    const res = typeof syncInvoiceToSupabase === 'function'
-      ? await syncInvoiceToSupabase(legacyInvoiceObj)
-      : await insertOrderWithFallback({
-          order_no: refNo.replace(/^#/, ''),
-          order_date: legacyDate,
-          cust_name: customerName,
-          telephone: phone,
-          email: email,
-          address: address,
-          rental_total: subtotal,
-          caution_dep: caution,
-          transport: transport,
-          grand_total: grandTotal,
-          items: items,
-          is_legacy: true,
-          order_type: 'legacy',
-          notes: 'Legacy paper receipt ingestion'
-        });
-
     if (typeof logAuditAction === 'function') {
-      logAuditAction(refNo, 'LEGACY_INGESTION', {
+      logAuditAction(savedRefNo, 'LEGACY_INGESTION', {
         itemsCount: items.length,
-        totalCost: grandTotal
+        totalCost: grandTotal,
+        dbId: legacyInvoiceObj.dbId,
+        ...(previewRefNo && savedRefNo !== previewRefNo ? { previewRefNo } : {})
       });
     }
 
-    if (res && res.error) {
-      console.warn('Legacy order Supabase sync note:', res.error);
-      showToast(`Ingested locally! Supabase note: ${res.error.message || 'Database sync pending'}`, 'error');
+    if (previewRefNo && savedRefNo !== previewRefNo) {
+      showToast(
+        `Ingested as ${savedRefNo} — another ingestion took ${previewRefNo} first, ` +
+          'so this record was given the next free reference. Nothing existing was changed.',
+        'success'
+      );
     } else {
-      showToast(`Legacy record ${refNo} ingested and synced to Supabase!`, 'success');
+      showToast(`Legacy record ${savedRefNo} ingested and synced to Supabase!`, 'success');
     }
 
     renderAllInvoicesTable(MASTER_INVOICES);

@@ -2,44 +2,101 @@
    Kitchenware Rentals Ltd — ERP & Order Management System
    MODULE: INVOICES — transactions, tabs, deposits, modals, rental billing
    ============================================================================== */
-function getNextSerialInvoiceNo() {
-  let maxSeq = 0;
-  MASTER_INVOICES.forEach(inv => {
-    if (!inv.isLegacy) {
-      const match = inv.invoiceNo.match(/\d+/);
-      if (match) {
-        const num = parseInt(match[0], 10);
-        if (num > maxSeq) maxSeq = num;
-      }
-    }
+/* ── INVOICE NUMBER: PROJECTED ON SCREEN, ALLOCATED ON SAVE ─────────────── */
+// The number in the form header is only a projection of the highest saved number.
+// It is a plain read, so loading or refreshing the page never consumes a number
+// and can never leave gaps. The real, collision-proof number is allocated by the
+// server inside saveInvoice(), so a number only exists once an invoice exists.
+let invoiceNumberRequest = Promise.resolve(null);
+let invoiceNumberIsReady = false;
+// The database row this form is editing. Identity is the id, never the number:
+// a number alone must never be enough to select a row to overwrite.
+let editingInvoiceDbId = null;
+
+function setInvoiceNumberDisplay(invoiceNo) {
+  const badge = document.getElementById('badgeNo');
+  const hidden = document.getElementById('fOrderNo');
+  if (badge) badge.textContent = invoiceNo;
+  if (hidden) hidden.value = invoiceNo;
+}
+
+function setInvoiceFormMode(mode) {
+  // mode: 'editing' | 'new' | 'unassigned'
+  const form = document.getElementById('tab-invoicing');
+  if (form) form.dataset.invoiceMode = mode;
+  document.body.dataset.invoiceMode = mode;
+  updateInvoiceSaveAvailability();
+}
+
+function updateInvoiceSaveAvailability() {
+  const mode = document.body.dataset.invoiceMode || 'unassigned';
+  const editable = mode === 'editing';
+  // A new invoice is always saveable: its number is allocated during the save,
+  // so the number on screen is a hint rather than a prerequisite.
+  const ready = editable || mode === 'new' || mode === 'unassigned' || !mode;
+
+  const displayNo = document.getElementById('fOrderNo')?.value || '';
+  [document.getElementById('btnSaveInvoice'), document.getElementById('btnStickySave')].forEach(btn => {
+    if (!btn) return;
+    btn.disabled = !ready;
+    btn.setAttribute('aria-busy', ready ? 'false' : 'true');
+    btn.title = !ready
+      ? 'Waiting for the form to load…'
+      : (editable
+        ? `Save changes to ${displayNo || 'this invoice'}`
+        : 'Save this invoice — its number is allocated when it is saved')
   });
-  const nextNum = maxSeq + 1;
-  return `#INV-${nextNum.toString().padStart(4, '0')}`;
+}
+
+function refreshInvoiceNumber(showToastMessage) {
+  // Cheap and side-effect free: reads the highest saved number, consumes nothing.
+  const request = (async () => {
+    invoiceNumberIsReady = false;
+    setInvoiceFormMode('new');
+    const badge = document.getElementById('badgeNo');
+    if (badge) badge.textContent = '…';
+    try {
+      const no = await projectNextInvoiceNo();
+      // A newer refresh superseded this one. Stop here without touching the
+      // badge: the newer request already shows '…' and will fill in the number
+      // itself. Writing here would strand the header on '…' until the next save.
+      if (request !== invoiceNumberRequest) return null;
+      setInvoiceNumberDisplay(no);
+      invoiceNumberIsReady = true;
+      updateInvoiceSaveAvailability();
+      if (showToastMessage) showToast(`New transaction ready (next number ${no})`, 'success');
+      return no;
+    } catch (err) {
+      // The projection is cosmetic. Saving still works, because the number is
+      // allocated at save time. Only the newest request may report it, though.
+      if (request !== invoiceNumberRequest) return null;
+      setInvoiceNumberDisplay('');
+      invoiceNumberIsReady = true;
+      updateInvoiceSaveAvailability();
+      if (badge) badge.textContent = 'Assigned on save';
+      console.warn('Invoice number projection unavailable:', err);
+      return null;
+    }
+  })();
+  invoiceNumberRequest = request;
+  return request;
 }
 
 function createNewTransaction() {
   clearInvoiceForm();
   if (typeof clearInvoiceErrors === 'function') clearInvoiceErrors();
-  const nextNo = getNextSerialInvoiceNo();
-  const badge = document.getElementById('badgeNo');
-  const hidden = document.getElementById('fOrderNo');
-  if (badge) badge.textContent = nextNo;
-  if (hidden) hidden.value = nextNo;
-  showToast(`New transaction form initialized (${nextNo})`);
+  return invoiceNumberRequest;
 }
 
 function handleClearInvoicing() {
   clearInvoiceForm();
   if (typeof clearInvoiceErrors === 'function') clearInvoiceErrors();
-  const nextNo = getNextSerialInvoiceNo();
-  const badge = document.getElementById('badgeNo');
-  const hidden = document.getElementById('fOrderNo');
-  if (badge) badge.textContent = nextNo;
-  if (hidden) hidden.value = nextNo;
-  showToast('All invoicing fields cleared');
+  showToast('All invoicing fields cleared — the next number is assigned when you save', 'success');
+  return invoiceNumberRequest;
 }
 
 function clearInvoiceForm() {
+  editingInvoiceDbId = null;
   if (document.getElementById('fCustomerName')) document.getElementById('fCustomerName').value = '';
   if (document.getElementById('fPhone')) document.getElementById('fPhone').value = '';
   if (document.getElementById('fEmail')) document.getElementById('fEmail').value = '';
@@ -66,6 +123,8 @@ function clearInvoiceForm() {
   }
   recalc();
   if (typeof setFormReadOnly === 'function') setFormReadOnly(false);
+  // A cleared form is a brand-new transaction, so it needs a fresh server number.
+  refreshInvoiceNumber(false);
 }
 
 /* ── ROLE-BASED TAB SWITCHING ──────────────────────────────────────────── */
@@ -458,10 +517,24 @@ function editInvoiceAsSuperAdmin(invoiceNo) {
     return;
   }
 
+  // Edits are applied to one specific database row, keyed by id. Without an id
+  // the save would have to guess a row (the old order_no lookup) — refuse instead
+  // of risking another merchant's invoice.
+  if (!inv.dbId) {
+    showToast(
+      `${inv.invoiceNo} is not linked to a database row yet. Reload the invoice list (the sync may still be pending), then edit it again.`,
+      'error'
+    );
+    return;
+  }
+
   closeInvoiceDetailModal();
 
-  document.getElementById('badgeNo').textContent = inv.invoiceNo;
-  document.getElementById('fOrderNo').value = inv.invoiceNo;
+  // Editing mode pins this form to the existing row: no new number is allocated
+  // and the save becomes an update by id.
+  editingInvoiceDbId = inv.dbId;
+  setInvoiceFormMode('editing');
+  setInvoiceNumberDisplay(inv.invoiceNo);
   document.getElementById('fCustomerName').value = inv.customerName || '';
   document.getElementById('fPhone').value = inv.phone || '';
   document.getElementById('fEmail').value = inv.email || '';
@@ -505,9 +578,12 @@ function editInvoiceAsSuperAdmin(invoiceNo) {
   showToast(`Editing transaction ${inv.invoiceNo} — make your changes and click Save & Fulfill Invoice`, 'success');
 }
 
-/* ── SAVE & FULFILL INVOICE (PERSISTS WITH AWAIT & ERROR HANDLING) ──────── */
+/* ── SAVE & FULFILL INVOICE ─────────────────────────────────────────────── */
+// New invoices are inserted with a server-allocated number. Edits are updates
+// keyed on the database id, so a number can never be used to find (and then
+// overwrite) a different invoice.
 async function saveInvoice(status = 'CONFIRMED') {
-  const invoiceNo = document.getElementById('fOrderNo')?.value || getNextSerialInvoiceNo();
+  const invoiceNo = (document.getElementById('fOrderNo')?.value || '').trim();
   const customerName = (document.getElementById('fCustomerName')?.value || '').trim();
   const phone = (document.getElementById('fPhone')?.value || '').trim();
   const email = (document.getElementById('fEmail')?.value || '').trim();
@@ -516,6 +592,25 @@ async function saveInvoice(status = 'CONFIRMED') {
   const startDate = document.getElementById('fStartDate')?.value;
   const caution = parseFloat(document.getElementById('fCaution')?.value) || 0;
   const transport = parseFloat(document.getElementById('fTransport')?.value) || 0;
+
+  // Which record are we writing? Either the row this form was opened to edit
+  // (pinned by database id) or a brand-new invoice. The number is display-only
+  // and is never used to decide which row to write.
+  const editingInv = editingInvoiceDbId
+    ? MASTER_INVOICES.find(i => i.dbId === editingInvoiceDbId) || null
+    : null;
+  const isEdit = Boolean(editingInv);
+
+  if (editingInvoiceDbId && !editingInv) {
+    // The row being edited vanished from the list (deleted, or the list was
+    // reloaded). Saving here would insert a second invoice under the same number.
+    showToast(
+      `The transaction you were editing (${invoiceNo}) is no longer in the invoice list. ` +
+      'Reload the page and edit it again — nothing was saved.',
+      'error'
+    );
+    return;
+  }
 
   if (typeof validateInvoiceForm === 'function' && !validateInvoiceForm()) {
     showToast('Please fix the highlighted fields before saving.', 'error');
@@ -549,24 +644,47 @@ async function saveInvoice(status = 'CONFIRMED') {
   const finalStatus = VALID_STATUSES.includes(status) ? status : 'CONFIRMED';
 
   const saveBtn = document.getElementById('btnSaveInvoice');
+  const stickyBtn = document.getElementById('btnStickySave');
+  const restoreButton = () => {
+    if (saveBtn) {
+      saveBtn.disabled = false;
+      saveBtn.innerHTML = '<span>💾</span> Save &amp; Fulfill Invoice';
+    }
+    if (stickyBtn) stickyBtn.disabled = false;
+    updateInvoiceSaveAvailability();
+  };
   if (saveBtn) {
     saveBtn.disabled = true;
     saveBtn.innerHTML = '<span>⏳</span> Saving & Syncing...';
   }
+  if (stickyBtn) stickyBtn.disabled = true;
 
   try {
-    // 1. Sync & persist customer details to DB customer table
-    await saveCustomerToDb({
+    // 1. Claim the invoice number now. This is the only place a number is taken,
+    // so a number exists only for an invoice that is actually being saved.
+    let invoiceNoForSave = invoiceNo;
+    if (!isEdit) {
+      invoiceNoForSave = await allocateInvoiceNo();
+      if (!invoiceNoForSave) throw new Error('The server did not return an invoice number.');
+    }
+
+    // 2. Sync & persist customer details to DB customer table, keeping the id
+    //    so the order is linked to the right customer.
+    const customerId = await saveCustomerToDb({
       name: customerName,
       telephone: phone,
       email: email,
       address: customerAddress,
-      notes: `Customer created from Invoice ${invoiceNo}`
+      notes: `Customer created from Invoice ${invoiceNoForSave}`
     });
 
-    const existingIdx = MASTER_INVOICES.findIndex(i => i.invoiceNo === invoiceNo);
     const newInvoiceObj = {
-      invoiceNo,
+      invoiceNo: invoiceNoForSave,
+      // Preserved on insert; ignored on update (the row keeps its own values).
+      dbId: isEdit ? editingInv.dbId : undefined,
+      updatedAt: isEdit ? editingInv.updatedAt : undefined,
+      isNew: !isEdit,
+      customerId: customerId || (isEdit ? editingInv.customerId : undefined),
       date: startDate || new Date().toISOString().split('T')[0],
       customerName,
       phone: phone || 'N/A',
@@ -581,48 +699,78 @@ async function saveInvoice(status = 'CONFIRMED') {
       rentalDays,
       startDate: startDate || new Date().toISOString().split('T')[0],
       endDate: document.getElementById('fEndDate')?.value || '',
-      status: existingIdx !== -1 ? MASTER_INVOICES[existingIdx].status : finalStatus,
-      depositStatus: existingIdx !== -1 ? MASTER_INVOICES[existingIdx].depositStatus : 'HELD',
+      status: isEdit ? editingInv.status : finalStatus,
+      depositStatus: isEdit ? editingInv.depositStatus : (caution > 0 ? 'HELD' : 'N/A'),
       isLegacy: false,
       items
     };
 
-    if (existingIdx !== -1) {
+    if (isEdit) {
       // Editing must not discard the returned-items audit, its review, or the
       // payout/refund trail recorded against this transaction.
-      const previous = MASTER_INVOICES[existingIdx];
       [
         'returnReport', 'returnedAt', 'returnReview', 'refundAmount', 'refundBank',
         'refundedAt', 'refundedBy', 'payoutAdjustment', 'payoutDetailsUpdatedAt',
-        'payoutClosed', 'payoutClosedAt', 'payoutClosedBy'
+        'payoutClosed', 'payoutClosedAt', 'payoutClosedBy', 'reviewRevocations'
       ].forEach(key => {
-        if (previous[key] !== undefined) newInvoiceObj[key] = previous[key];
+        if (editingInv[key] !== undefined) newInvoiceObj[key] = editingInv[key];
       });
-      MASTER_INVOICES[existingIdx] = newInvoiceObj;
-    } else {
-      MASTER_INVOICES.unshift(newInvoiceObj);
     }
 
+    // 3. Persist to Supabase FIRST. Local state only reflects a confirmed write.
+    const res = await syncInvoiceToSupabase(newInvoiceObj);
+    if (res && res.error) {
+      console.warn('Supabase order write failed:', res.error);
+      if (res.conflict) {
+        showToast(res.error.message, 'error');
+        // Re-pull the authoritative version so the user can retry on fresh data.
+        await fetchInvoicesFromSupabase();
+        renderAllInvoicesTable(MASTER_INVOICES);
+        return;
+      }
+      showToast(`Not saved: ${res.error.message || 'Database write failed'}`, 'error');
+      return;
+    }
+
+    const savedNo = newInvoiceObj.invoiceNo;
+    // The header number is only a projection, so it can differ from the number the
+    // server actually handed out (another device saved first, or the projection was
+    // stale). Say so instead of silently showing a different number.
+    const normalizedInputNo = invoiceNo.replace(/^#?INV-/i, '');
+    const renamed = !isEdit && savedNo.replace(/^#?INV-/i, '') !== normalizedInputNo;
+
+    // 4. Commit to local state only after the database accepted the write.
+    const replaceIdx = isEdit
+      ? MASTER_INVOICES.findIndex(i => i.dbId === newInvoiceObj.dbId)
+      : -1;
+    if (replaceIdx !== -1) {
+      MASTER_INVOICES[replaceIdx] = { ...MASTER_INVOICES[replaceIdx], ...newInvoiceObj, isNew: false };
+    } else {
+      MASTER_INVOICES.unshift({ ...newInvoiceObj, isNew: false });
+    }
     persistMasterInvoices();
 
     // Keep an audit-ready snapshot of every saved document for the print archive.
     if (typeof archiveInvoiceSnapshot === 'function') archiveInvoiceSnapshot(newInvoiceObj);
 
-    // 2. Persist to Supabase orders table with awaiting feedback
-    const res = await syncInvoiceToSupabase(newInvoiceObj);
     if (typeof logAuditAction === 'function') {
-      logAuditAction(invoiceNo, existingIdx !== -1 ? 'ORDER_UPDATED' : 'ORDER_CREATED', {
+      logAuditAction(savedNo, isEdit ? 'ORDER_UPDATED' : 'ORDER_CREATED', {
         grandTotal,
         customerName,
-        itemsCount: items.length
+        itemsCount: items.length,
+        dbId: newInvoiceObj.dbId,
+        ...(renamed ? { renumberedFrom: invoiceNo } : {})
       });
     }
 
-    if (res && res.error) {
-      console.warn('Supabase order insert note:', res.error);
-      showToast(`Saved locally! Supabase sync note: ${res.error.message || 'Database sync pending'}`, 'error');
+    if (renamed) {
+      showToast(
+        `Saved as ${savedNo} — another save took ${invoiceNo || 'the number on screen'} first, ` +
+        'so this invoice was given the next free number. No existing invoice was changed.',
+        'success'
+      );
     } else {
-      showToast(`Invoice ${invoiceNo} saved & synced successfully!`, 'success');
+      showToast(`Invoice ${savedNo} saved & synced successfully!`, 'success');
     }
 
     renderAllInvoicesTable(MASTER_INVOICES);
@@ -634,10 +782,7 @@ async function saveInvoice(status = 'CONFIRMED') {
     console.error('Error in saveInvoice:', err);
     showToast(`Error saving invoice: ${err.message}`, 'error');
   } finally {
-    if (saveBtn) {
-      saveBtn.disabled = false;
-      saveBtn.innerHTML = '<span>💾</span> Save &amp; Fulfill Invoice';
-    }
+    restoreButton();
   }
 }
 

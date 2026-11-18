@@ -139,6 +139,58 @@ const INVENTORY_CATALOG = [
 ];
 
 /* ── PERSISTENCE HELPERS (LOCALSTORAGE & SUPABASE) ─────────────────────── */
+/* ── LOCAL CACHE RECONCILIATION ────────────────────────────────────────── */
+// Identity is the database row id, never the invoice number: two local records
+// that share an id are one invoice, and a record whose id is gone from the
+// database is not an invoice at all. Both cases used to leave ghosts behind.
+
+function pruneMissingRemoteInvoices(remoteRows, totalCount) {
+  if (!Array.isArray(remoteRows)) return 0;
+  // Only trust the answer when the page we received is the whole table.
+  if (typeof totalCount !== 'number' || remoteRows.length !== totalCount) return 0;
+
+  const remoteIds = new Set(remoteRows.map(row => row && row.id).filter(Boolean));
+  const kept = MASTER_INVOICES.filter(inv => !inv.dbId || remoteIds.has(inv.dbId));
+  const removed = MASTER_INVOICES.length - kept.length;
+  if (removed > 0) {
+    console.warn(`Dropped ${removed} cached invoice(s) that no longer exist in the database.`);
+    MASTER_INVOICES = kept;
+  }
+  return removed;
+}
+
+// A browser that synced before this fix can still hold two local copies of the
+// same database row (the old code matched rows by number, and numbers were
+// reused). Keep the newest copy and drop the stale ghost.
+function dedupeMasterInvoices() {
+  const seen = new Map();
+  const kept = [];
+  MASTER_INVOICES.forEach(inv => {
+    if (!inv || !inv.dbId) { kept.push(inv); return; }
+    const previous = seen.get(inv.dbId);
+    if (!previous) {
+      seen.set(inv.dbId, inv);
+      kept.push(inv);
+      return;
+    }
+    const previousTime = Date.parse(previous.updatedAt || '') || 0;
+    const currentTime = Date.parse(inv.updatedAt || '') || 0;
+    if (currentTime >= previousTime) {
+      const at = kept.indexOf(previous);
+      if (at !== -1) kept[at] = inv;
+      seen.set(inv.dbId, inv);
+    }
+  });
+
+  const removed = MASTER_INVOICES.length - kept.length;
+  if (removed > 0) {
+    console.warn(`Collapsed ${removed} stale duplicate invoice record(s) that shared a database id.`);
+    MASTER_INVOICES = kept;
+    persistMasterInvoices();
+  }
+  return removed;
+}
+
 function loadMasterInvoices() {
   const localSaved = localStorage.getItem('kwr_saved_invoices');
   if (localSaved) {
@@ -155,6 +207,7 @@ function loadMasterInvoices() {
       console.error('Error reading localStorage invoices:', e);
     }
   }
+  dedupeMasterInvoices();
 }
 
 function persistMasterInvoices() {
@@ -335,72 +388,82 @@ async function logAuditAction(orderNo, action, details = {}) {
   }
 }
 
-async function upsertOrderWithFallback(orderPayload) {
-  try {
-    const cleanNo = String(orderPayload.order_no).replace(/^#/, '');
-    
-    // Check if order already exists in Supabase
-    const { data: existing, error: checkErr } = await db.from('orders')
-      .select('id, order_no')
-      .eq('order_no', cleanNo)
-      .limit(1);
+/* ── SERVER-SIDE INVOICE NUMBER ALLOCATION ─────────────────────────────── */
+// Numbers are never derived from the local list. A Postgres sequence (migration
+// 03) hands out the next value, so two browsers can never receive the same
+// number and a cleared localStorage starts from the real maximum, not 0005.
+const ORDER_INSERT_MAX_ATTEMPTS = 3;
 
-    const isUpdate = !checkErr && existing && existing.length > 0;
+function normalizeOrderNo(invoiceNo) {
+  return String(invoiceNo || '').trim().replace(/^#/, '').replace(/^INV-/i, '');
+}
 
-    let res;
-    if (isUpdate) {
-      res = await db.from('orders').update(orderPayload).eq('order_no', cleanNo);
-    } else {
-      res = await db.from('orders').insert(orderPayload);
-    }
+function formatInvoiceNo(orderNo) {
+  const raw = String(orderNo || '').trim();
+  if (!raw) return '';
+  if (raw.startsWith('#')) return raw;
+  if (/^LEG-/i.test(raw)) return `#${raw}`;
+  return `#INV-${raw.replace(/^INV-/i, '').padStart(4, '0')}`;
+}
 
-    if (!res.error) return res;
+// One source of truth for numbers: the highest order_no actually stored in the
+// database. The same function feeds the on-screen badge and the save, so the
+// number you see is the number you get, and nothing is consumed by a page load.
+//
+// Uniqueness is enforced by the database (unique constraint on order_no), and
+// insertOrderRow() retries with a fresh number if two devices race for the same
+// one. That is what makes this safe without a separate counter.
+async function nextNumberFromDatabase(kind) {
+  const pattern = kind === 'legacy' ? /^#?LEG-(\d+)$/i : /^#?(?:INV-)?(\d+)$/i;
+  let max = 0;
 
-    // Graceful column fallback if schema migration 02 is not yet executed on remote DB
-    if (res.error && res.error.message && res.error.message.includes('does not exist')) {
-      console.warn('Orders column fallback, stripping unmigrated fields:', res.error.message);
-      const fallbackPayload = { ...orderPayload };
-      
-      const optionalCols = [
-        'return_report', 'return_review', 'refund_amount', 'refund_bank',
-        'refunded_at', 'refunded_by', 'payout_adjustment', 'payout_closed',
-        'payout_closed_at', 'payout_closed_by', 'returned_at', 'review_revocations',
-        'is_legacy', 'order_type', 'updated_at'
-      ];
-      optionalCols.forEach(col => delete fallbackPayload[col]);
+  // Page through every stored number: one request is capped at 1000 rows and a
+  // truncated read would compute a number that is already taken.
+  const PAGE = 1000;
+  for (let from = 0; ; from += PAGE) {
+    const { data, error } = await db.from('orders')
+      .select('order_no')
+      .order('order_no', { ascending: true })
+      .range(from, from + PAGE - 1);
+    if (error) throw error;
 
-      if (orderPayload.is_legacy) {
-        fallbackPayload.notes = (fallbackPayload.notes ? fallbackPayload.notes + ' ' : '') + '[LEGACY_INGESTION]';
-      }
+    (data || []).forEach(row => {
+      const match = String(row.order_no || '').match(pattern);
+      if (match) max = Math.max(max, parseInt(match[1], 10));
+    });
 
-      if (isUpdate) {
-        return await db.from('orders').update(fallbackPayload).eq('order_no', cleanNo);
-      } else {
-        return await db.from('orders').insert(fallbackPayload);
-      }
-    }
-    return res;
-  } catch (err) {
-    console.error('Upsert order error:', err);
-    return { error: err };
+    if (!data || data.length < PAGE) break;
   }
+
+  const next = max + 1;
+  return kind === 'legacy'
+    ? `#LEG-${String(next).padStart(4, '0')}`
+    : `#INV-${String(next).padStart(4, '0')}`;
 }
 
-// Backwards-compatibility alias
-async function insertOrderWithFallback(orderPayload) {
-  return await upsertOrderWithFallback(orderPayload);
+// Projection for the badge: a plain read, so refreshing never burns a number.
+async function projectNextInvoiceNo() {
+  return nextNumberFromDatabase('invoice');
 }
 
-/**
- * Unified persistence helper: transforms an in-memory invoice object
- * and syncs all state (including return audit, review gate, and payouts) to Supabase.
- */
-async function syncInvoiceToSupabase(inv) {
-  if (!inv || !inv.invoiceNo) return { error: new Error('Invalid invoice object') };
-  const cleanNo = inv.invoiceNo.replace('#INV-', '').replace(/^#/, '');
+async function projectNextLegacyNo() {
+  return nextNumberFromDatabase('legacy');
+}
 
+// Called at save time. Same computation as the projection, so the number on
+// screen and the number saved agree; a race is resolved by the retry in
+// insertOrderRow().
+async function allocateInvoiceNo() {
+  return nextNumberFromDatabase('invoice');
+}
+
+async function allocateLegacyNo() {
+  return nextNumberFromDatabase('legacy');
+}
+
+/* ── ORDER PERSISTENCE (IDENTITY = id, NEVER order_no) ─────────────────── */
+function buildOrderPayload(inv) {
   const payload = {
-    order_no: cleanNo,
     order_date: inv.date || inv.startDate || new Date().toISOString().split('T')[0],
     cust_name: inv.customerName || 'Customer',
     telephone: inv.phone && inv.phone !== 'N/A' ? inv.phone : '',
@@ -430,12 +493,149 @@ async function syncInvoiceToSupabase(inv) {
     review_revocations: Array.isArray(inv.reviewRevocations) ? inv.reviewRevocations : []
   };
 
-  return await upsertOrderWithFallback(payload);
+  // Link the order to its customer record. Only send the key when it is known,
+  // so an edit of an older row cannot blank out an existing link.
+  if (inv.customerId) payload.customer_id = inv.customerId;
+  return payload;
+}
+
+function applyOrderRowToInvoice(inv, row) {
+  if (!row) return;
+  if (row.id) inv.dbId = row.id;
+  if (row.updated_at) inv.updatedAt = row.updated_at;
+  if (row.order_no) inv.invoiceNo = formatInvoiceNo(row.order_no);
+}
+
+function isUniqueViolation(error) {
+  return error?.code === '23505' || /duplicate key|unique constraint/i.test(error?.message || '');
+}
+
+function describeOrderWriteError(error) {
+  if (!error) return new Error('The database did not confirm the write.');
+  const message = error.message || String(error);
+  if (/column .* does not exist|schema cache/i.test(message)) {
+    return new Error(
+      `The orders table is missing a column this app writes (${message}). ` +
+      'Run db/migrations/02 and 03, then reload the page.'
+    );
+  }
+  if (/row-level security/i.test(message)) {
+    return new Error(`The database rejected this write (${message}). Check the orders RLS policy for your role.`);
+  }
+  return error instanceof Error ? error : new Error(message);
+}
+
+function conflictError() {
+  const err = new Error(
+    'This invoice was changed elsewhere after you opened it. Nothing was overwritten — reload the latest version and try again.'
+  );
+  err.conflict = true;
+  return err;
+}
+
+async function insertOrderRow(inv, payload, options) {
+  const allowRenumber = options.allowRenumber !== false && inv.isNew !== false;
+  let candidate = normalizeOrderNo(inv.invoiceNo);
+  let lastError = null;
+
+  for (let attempt = 0; attempt < ORDER_INSERT_MAX_ATTEMPTS; attempt += 1) {
+    const { data, error } = await db.from('orders')
+      .insert({ ...payload, order_no: candidate })
+      .select('id, order_no, updated_at')
+      .single();
+
+    if (!error && data) {
+      applyOrderRowToInvoice(inv, data);
+      return { data, renumbered: attempt > 0 };
+    }
+
+    lastError = error || new Error('The database did not return the inserted invoice.');
+
+    if (!isUniqueViolation(lastError)) break;
+
+    if (!allowRenumber) {
+      const duplicate = new Error(
+        `Invoice number ${candidate} is already used by another transaction. Nothing was overwritten — ` +
+        'reload the invoice list so this record picks up its database id, then save again.'
+      );
+      duplicate.code = lastError.code;
+      return { error: duplicate };
+    }
+
+    // Another browser/device took this number first. Ask the server for the
+    // next one and retry; the new invoice has not been referenced anywhere yet.
+    try {
+      inv.invoiceNo = inv.isLegacy ? await allocateLegacyNo() : await allocateInvoiceNo();
+      candidate = normalizeOrderNo(inv.invoiceNo);
+    } catch (allocErr) {
+      return { error: allocErr };
+    }
+  }
+
+  return { error: describeOrderWriteError(lastError) };
+}
+
+async function updateOrderRow(inv, payload) {
+  let expectedUpdatedAt = inv.updatedAt || null;
+
+  // Rows loaded before migration 03 (or created in another tab) may not have a
+  // cached version yet. Read it once, then update under that version.
+  if (!expectedUpdatedAt) {
+    const { data: current, error: readErr } = await db.from('orders')
+      .select('updated_at')
+      .eq('id', inv.dbId)
+      .maybeSingle();
+    if (readErr) return { error: describeOrderWriteError(readErr) };
+    if (!current) {
+      return { error: new Error('This invoice no longer exists in the database. Reload the invoice list.') };
+    }
+    expectedUpdatedAt = current.updated_at;
+  }
+
+  const { data, error } = await db.from('orders')
+    .update(payload)
+    .eq('id', inv.dbId)
+    .eq('updated_at', expectedUpdatedAt)
+    .select('id, order_no, updated_at')
+    .maybeSingle();
+
+  if (error) return { error: describeOrderWriteError(error) };
+  if (!data) return { error: conflictError(), conflict: true };
+
+  applyOrderRowToInvoice(inv, data);
+  return { data };
+}
+
+/**
+* Unified persistence helper: transforms an in-memory invoice object and syncs
+* all state (including return audit, review gate, and payouts) to Supabase.
+*
+* Identity rules:
+*  - New invoices are INSERTed with a server-allocated order_no.
+*  - Edits are UPDATEed by the database id, guarded by updated_at (optimistic
+*    concurrency). The code never looks a row up by order_no, so a number
+*    collision can never overwrite somebody else's invoice.
+*/
+async function syncInvoiceToSupabase(inv, options = {}) {
+  if (!inv || !inv.invoiceNo) return { error: new Error('Invalid invoice object') };
+
+  try {
+    const payload = buildOrderPayload(inv);
+    if (inv.dbId) return await updateOrderRow(inv, payload);
+    return await insertOrderRow(inv, payload, options);
+  } catch (err) {
+    console.error('Sync invoice error:', err);
+    return { error: describeOrderWriteError(err) };
+  }
 }
 
 async function fetchInvoicesFromSupabase() {
   try {
-    const { data, error } = await db.from('orders').select('*');
+  const { data, error, count } = await db.from('orders').select('*', { count: 'exact' });
+    if (error) {
+      console.error('Supabase invoice fetch failed:', error);
+      throw error;
+    }
     if (data && data.length > 0) {
       data.forEach(order => {
         const isLegacy = order.is_legacy === true ||
@@ -452,6 +652,12 @@ async function fetchInvoicesFromSupabase() {
         const existingIdx = MASTER_INVOICES.findIndex(i => i.invoiceNo === invNo);
         const mappedOrder = {
           invoiceNo: invNo,
+          // Database identity + version are what edits are keyed on. They travel
+          // with the invoice so a save can never fall back to matching by the
+          // (non-unique) order_no. order_no itself is display-only now.
+          dbId: order.id,
+          updatedAt: order.updated_at,
+          customerId: order.customer_id || undefined,
           date: order.order_date || (order.created_at ? order.created_at.split('T')[0] : '2026-09-26'),
           customerName: order.cust_name || order.placed_by || 'Customer',
           phone: order.telephone || 'N/A',
@@ -484,11 +690,15 @@ async function fetchInvoicesFromSupabase() {
         };
 
         if (existingIdx !== -1) {
-          // Merge Supabase updates with existing local invoice
+          // Merge Supabase updates with existing local invoice.
+          // Identity columns always win over whatever the local copy had.
           const local = MASTER_INVOICES[existingIdx];
           MASTER_INVOICES[existingIdx] = {
             ...local,
             ...mappedOrder,
+            dbId: mappedOrder.dbId,
+            updatedAt: mappedOrder.updatedAt,
+            customerId: mappedOrder.customerId !== undefined ? mappedOrder.customerId : local.customerId,
             // Keep local properties if Supabase record has null/undefined for returns/reviews
             returnReport: mappedOrder.returnReport || local.returnReport,
             returnReview: mappedOrder.returnReview || local.returnReview,
@@ -506,19 +716,28 @@ async function fetchInvoicesFromSupabase() {
         }
       });
 
+    pruneMissingRemoteInvoices(data, count);
+  dedupeMasterInvoices();
       persistMasterInvoices();
       if (typeof renderAllInvoicesTable === 'function') renderAllInvoicesTable(MASTER_INVOICES);
       if (typeof renderDepositsTable === 'function') renderDepositsTable();
       if (typeof renderLegacyLogsTable === 'function') renderLegacyLogsTable();
       if (typeof updateDashboardMetrics === 'function') updateDashboardMetrics();
     }
+    return { ok: true, count: data ? data.length : 0 };
   } catch (e) {
-    console.log('Supabase sync note:', e);
+    console.error('Supabase invoice fetch note:', e);
+    return { ok: false, error: e };
   }
 }
 
 // Window exports
 window.syncInvoiceToSupabase = syncInvoiceToSupabase;
-window.upsertOrderWithFallback = upsertOrderWithFallback;
+window.allocateInvoiceNo = allocateInvoiceNo;
+window.allocateLegacyNo = allocateLegacyNo;
+window.projectNextInvoiceNo = projectNextInvoiceNo;
+window.projectNextLegacyNo = projectNextLegacyNo;
+window.formatInvoiceNo = formatInvoiceNo;
 window.logAuditAction = logAuditAction;
 window.fetchInvoicesFromSupabase = fetchInvoicesFromSupabase;
+window.saveCustomerToDb = saveCustomerToDb;

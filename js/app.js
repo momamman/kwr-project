@@ -408,15 +408,32 @@ function renderUserPanel() {
 
   // Edit Transaction button is handled via document-level delegation ([data-action="edit-invoice"])
 
-  // ── Bootstrap: local state → remote sync → render ──
+  // ── Bootstrap: local state → remote sync → render → project numbers ──
+  // The number in the form is only a projection of the highest saved invoice; the
+  // real number is allocated by the server when an invoice is saved, so a page
+  // load or refresh never consumes one.
   loadMasterInvoices();
-  fetchInvoicesFromSupabase().then(() => {
-    renderAllInvoicesTable(MASTER_INVOICES);
-    // A QR code links back to ?invoice=INV-0001 — open that record once the
-    // remote records (if any) have joined the local set.
-    if (typeof handleInvoiceDeepLink === 'function') handleInvoiceDeepLink();
-  });
-  await fetchCustomersFromSupabase();
   renderAllInvoicesTable(MASTER_INVOICES);
+  setInvoiceFormMode('unassigned');
+
+  const remoteResult = await fetchInvoicesFromSupabase();
+  await fetchCustomersFromSupabase();
+
+  renderAllInvoicesTable(MASTER_INVOICES);
+  renderDepositsTable();
+  renderLegacyLogsTable();
+  updateDashboardMetrics();
+
+  // A QR code links back to ?invoice=INV-0001 — open that record once the
+  // remote records (if any) have joined the local set.
+  if (typeof handleInvoiceDeepLink === 'function') handleInvoiceDeepLink();
   initCharts();
+
+  if (!remoteResult || !remoteResult.ok) {
+    showToast('Could not reach the database, so invoices may be incomplete. The form stays locked until you reload.', 'error');
+  }
+
+  // Project the next numbers only now that the remote set is known.
+  await createNewTransaction();
+  await refreshLegacyNumber(false);
 })();
