@@ -465,6 +465,11 @@ async function allocateLegacyNo() {
 function buildOrderPayload(inv) {
   const payload = {
     order_date: inv.date || inv.startDate || new Date().toISOString().split('T')[0],
+    // The hire period must reach the database, not just localStorage: the alert
+    // engine, the late-fee maths and any other device all read end_date as the
+    // due date. Null is honest — a guessed date would produce false reminders.
+    start_date: inv.startDate || inv.date || null,
+    end_date: inv.endDate || null,
     cust_name: inv.customerName || 'Customer',
     telephone: inv.phone && inv.phone !== 'N/A' ? inv.phone : '',
     email: inv.email && inv.email !== 'N/A' ? inv.email : '',
@@ -516,7 +521,7 @@ function describeOrderWriteError(error) {
   if (/column .* does not exist|schema cache/i.test(message)) {
     return new Error(
       `The orders table is missing a column this app writes (${message}). ` +
-      'Run db/migrations/02 and 03, then reload the page.'
+      'Run db/migrations/02, 03 and 04, then reload the page.'
     );
   }
   if (/row-level security/i.test(message)) {
@@ -659,6 +664,10 @@ async function fetchInvoicesFromSupabase() {
           updatedAt: order.updated_at,
           customerId: order.customer_id || undefined,
           date: order.order_date || (order.created_at ? order.created_at.split('T')[0] : '2026-09-26'),
+          // Hire period, so the due-date alerts survive a page load / device
+          // switch. Rows written before migration 04 have nulls here.
+          startDate: order.start_date || order.order_date || undefined,
+          endDate: order.end_date || undefined,
           customerName: order.cust_name || order.placed_by || 'Customer',
           phone: order.telephone || 'N/A',
           email: order.email || 'N/A',
@@ -699,6 +708,10 @@ async function fetchInvoicesFromSupabase() {
             dbId: mappedOrder.dbId,
             updatedAt: mappedOrder.updatedAt,
             customerId: mappedOrder.customerId !== undefined ? mappedOrder.customerId : local.customerId,
+            // Same rule for the hire period: a pre-migration row returns null
+            // from the server and must not blank out a locally known end date.
+            startDate: mappedOrder.startDate || local.startDate,
+            endDate: mappedOrder.endDate || local.endDate,
             // Keep local properties if Supabase record has null/undefined for returns/reviews
             returnReport: mappedOrder.returnReport || local.returnReport,
             returnReview: mappedOrder.returnReview || local.returnReview,
@@ -721,6 +734,7 @@ async function fetchInvoicesFromSupabase() {
       persistMasterInvoices();
       if (typeof renderAllInvoicesTable === 'function') renderAllInvoicesTable(MASTER_INVOICES);
       if (typeof renderDepositsTable === 'function') renderDepositsTable();
+      if (typeof renderReturnAlerts === 'function') renderReturnAlerts();
       if (typeof renderLegacyLogsTable === 'function') renderLegacyLogsTable();
       if (typeof updateDashboardMetrics === 'function') updateDashboardMetrics();
     }

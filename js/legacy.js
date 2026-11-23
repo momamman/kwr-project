@@ -271,6 +271,9 @@ async function saveLegacyInvoice() {
       vat,
       caution,
       transport,
+      // Hire period, so an ingested paper record can also be alerted on.
+      startDate: legacyDate,
+      endDate: document.getElementById('legEndDate')?.value || '',
       status: 'CONFIRMED',
       depositStatus: caution > 0 ? 'HELD' : 'N/A',
       isLegacy: true,

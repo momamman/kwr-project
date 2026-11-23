@@ -106,6 +106,9 @@ function renderUserPanel() {
   // A4 print document (toolbar, modal and Ctrl/Cmd+P)
   if (typeof initPrintDocument === 'function') initPrintDocument();
 
+  // Return-due alerts, reminder cadence and the late-fee policy
+  if (typeof initReturnAlerts === 'function') initReturnAlerts();
+
   // ── Event Delegation: tab navigation (replaces inline onclick) ──
   document.querySelectorAll('.tab-btn[data-tab]').forEach(btn => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));

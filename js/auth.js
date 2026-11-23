@@ -69,7 +69,11 @@ function canAccessTab(role, tabName) {
   if (!role) return false;
   if (role === 'super_admin' || role === 'admin') return true;
   if (role === 'data_entry' && tabName === 'data_entry') return true;
-  if (role === 'invoicing' && tabName === 'invoicing') return true;
+  // Return alerts are operational: whoever handles hire and returns needs to
+  // see the queue and send reminders. Settings inside the panel stay Super
+  // Admin only, checked separately in alerts.js.
+  if (role === 'invoicing' && (tabName === 'invoicing' || tabName === 'return_alerts')) return true;
+  if (role === 'data_entry' && tabName === 'return_alerts') return true;
   if (role === 'analyst' && tabName === 'analysis') return true;
   return false;
 }

@@ -129,7 +129,7 @@ function clearInvoiceForm() {
 
 /* ── ROLE-BASED TAB SWITCHING ──────────────────────────────────────────── */
 function setupTabPermissions() {
-  const tabs = ['invoicing', 'all-invoices', 'data-entry', 'analysis', 'deposits'];
+  const tabs = ['invoicing', 'all-invoices', 'data-entry', 'analysis', 'deposits', 'return-alerts'];
   tabs.forEach(tab => {
     const btn = document.getElementById(`btn-tab-${tab}`);
     if (!btn) return;
@@ -183,6 +183,12 @@ function switchTab(tabName) {
 
   if (tabName === 'analysis') {
     updateDashboardMetrics();
+  }
+
+  // The alert queue is date-driven, so recompute it every time the panel opens
+  // rather than trusting whatever was rendered at page load.
+  if (tabName === 'return-alerts' && typeof renderReturnAlerts === 'function') {
+    renderReturnAlerts();
   }
 
   if (typeof updateStickyTotalVisibility === 'function') updateStickyTotalVisibility();
@@ -541,7 +547,10 @@ function editInvoiceAsSuperAdmin(invoiceNo) {
   document.getElementById('fCustomerAddress').value = inv.customerAddress || inv.address || '';
   document.getElementById('fAddress').value = inv.address || '';
   document.getElementById('fStartDate').value = inv.startDate || inv.date || new Date().toISOString().split('T')[0];
-  document.getElementById('fEndDate').value = inv.endDate || new Date().toISOString().split('T')[0];
+  // A record saved before hire periods were captured has no end date. Leave the
+  // field empty instead of defaulting to today, so editing an old invoice can
+  // never invent a due date that would then drive return alerts.
+  document.getElementById('fEndDate').value = inv.endDate || '';
   document.getElementById('fCaution').value = inv.caution || '';
   document.getElementById('fTransport').value = inv.transport || '';
 

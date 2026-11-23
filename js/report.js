@@ -1004,7 +1004,32 @@ function openReturnAudit(invoiceNo) {
         </tr>`).join('')
     : '<tr><td colspan="9" class="rr-empty">No items were recorded for this transaction.</td></tr>';
 
-  document.getElementById('auditLateFee').value = report.lateFee || '';
+  const lateFeeEl = document.getElementById('auditLateFee');
+  const lateFeeHint = document.getElementById('auditLateFeeHint');
+  const suggestion = typeof lateFeeSuggestion === 'function' ? lateFeeSuggestion(inv) : null;
+
+  const savedReport = inv.returnReport && typeof inv.returnReport === 'object' ? inv.returnReport : null;
+  const hasSavedLateFee = Boolean(savedReport) &&
+    savedReport.lateFee !== undefined && savedReport.lateFee !== null && savedReport.lateFee !== '';
+
+  // Auto-fill only when no figure has been saved yet. A saved 0 can be a
+  // deliberate waiver, and re-imposing the automatic charge on reopen would
+  // silently overrule the Super Admin's discretion.
+  lateFeeEl.value = hasSavedLateFee ? (report.lateFee || '') : (suggestion?.applies ? suggestion.amount : '');
+
+  if (lateFeeHint) {
+    const bits = [];
+    if (suggestion?.note) bits.push(suggestion.note);
+    if (hasSavedLateFee && suggestion?.applies && Number(report.lateFee) !== suggestion.amount) {
+      bits.push(`overridden to ${returnMoney(Number(report.lateFee) || 0)}`);
+    }
+    if (!bits.length && suggestion?.detail?.dueDate && !suggestion.applies) {
+      bits.push('Returned within the grace period — no automatic late fee.');
+    }
+    lateFeeHint.textContent = bits.join(' · ');
+    lateFeeHint.hidden = bits.length === 0;
+  }
+
   document.getElementById('auditCleaningFee').value = report.cleaningFee || '';
   document.getElementById('auditOtherLabel').value = report.otherLabel;
   document.getElementById('auditOtherAmount').value = report.otherAmount || '';
