@@ -197,6 +197,59 @@ function switchTab(tabName) {
   window.scrollTo({ top: 0, behavior: 'auto' });
 }
 
+/* ── ALL INVOICES TABLE — SORT STATE & HELPERS ──────────────────────────── */
+let allInvoicesSortKey = 'date';   // default: sort by date
+let allInvoicesSortDir = -1;        // -1 = descending (newest first), 1 = ascending
+
+function sortInvoices(list) {
+  if (!Array.isArray(list)) return list;
+  return [...list].sort((a, b) => {
+    const va = a[allInvoicesSortKey] ?? '';
+    const vb = b[allInvoicesSortKey] ?? '';
+    if (allInvoicesSortKey === 'totalCost') {
+      return allInvoicesSortDir * (Number(va) - Number(vb));
+    }
+    // ISO date strings and invoice numbers sort correctly as strings
+    return allInvoicesSortDir * String(va).toLowerCase().localeCompare(String(vb).toLowerCase());
+  });
+}
+
+function updateAllInvoicesSortIcons() {
+  const thead = document.getElementById('allInvoicesThead');
+  if (!thead) return;
+  thead.querySelectorAll('[data-sort]').forEach(th => {
+    const icon = th.querySelector('.sort-icon');
+    if (!icon) return;
+    if (th.dataset.sort !== allInvoicesSortKey) {
+      icon.textContent = '⇅';
+      th.setAttribute('aria-sort', 'none');
+    } else {
+      icon.textContent = allInvoicesSortDir === 1 ? '↑' : '↓';
+      th.setAttribute('aria-sort', allInvoicesSortDir === 1 ? 'ascending' : 'descending');
+    }
+  });
+}
+
+// Wire sort header clicks once the DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  const thead = document.getElementById('allInvoicesThead');
+  if (!thead) return;
+  thead.addEventListener('click', e => {
+    const th = e.target.closest('[data-sort]');
+    if (!th) return;
+    const key = th.dataset.sort;
+    if (allInvoicesSortKey === key) {
+      allInvoicesSortDir *= -1;
+    } else {
+      allInvoicesSortKey = key;
+      allInvoicesSortDir = key === 'totalCost' ? -1 : 1;
+    }
+    updateAllInvoicesSortIcons();
+    filterAllInvoicesTable(document.getElementById('allInvoicesSearchInput')?.value || '');
+  });
+  updateAllInvoicesSortIcons();
+});
+
 /* ── ALL INVOICES TAB LIST RENDERING & CLICK INTERACTION ───────────────── */
 function renderAllInvoicesTable(invoices) {
   const tbody = document.getElementById('allInvoicesListBody');
@@ -225,8 +278,9 @@ function renderAllInvoicesTable(invoices) {
   if (wrap) wrap.hidden = false;
 
   const isSuperAdmin = (currentRole === 'super_admin' || currentRole === 'admin');
+  const sorted = sortInvoices(invoices);
 
-    tbody.innerHTML = invoices.map((inv) => {
+    tbody.innerHTML = sorted.map((inv) => {
       let statusClass = 'pending';
       let statusLabel = 'Pending';
       if (inv.status === 'CONFIRMED') { statusClass = 'confirmed'; statusLabel = 'Confirmed (not gone out)'; }

@@ -1639,6 +1639,29 @@ body.sticky-total-open #toast {
 .max-w-300 { max-width: 300px; }
 .th-center { text-align: center; }
 
+/* Sortable column headers */
+th.sortable {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+th.sortable:hover {
+  color: var(--red);
+}
+th.sortable .sort-icon {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 11px;
+  opacity: 0.55;
+  transition: opacity 0.15s, color 0.15s;
+}
+th.sortable:hover .sort-icon,
+th.sortable[aria-sort="ascending"] .sort-icon,
+th.sortable[aria-sort="descending"] .sort-icon {
+  opacity: 1;
+  color: var(--red);
+}
+
 /* Dropzone */
 .dropzone-icon { font-size: 28px; }
 .dropzone-text { font-weight: 700; font-size: 13.5px; color: var(--text); }

@@ -649,9 +649,11 @@ async function fetchInvoicesFromSupabase() {
           (order.order_no && String(order.order_no).startsWith('LEG-'));
 
         const invNo = order.order_no
-          ? (order.order_no.startsWith('#') || order.order_no.startsWith('LEG-')
+          ? (order.order_no.startsWith('#')
             ? order.order_no
-            : `#INV-${String(order.order_no).padStart(4, '0')}`)
+            : order.order_no.startsWith('LEG-')
+              ? `#${order.order_no}`
+              : `#INV-${String(order.order_no).padStart(4, '0')}`)
           : `#INV-0000`;
 
         const existingIdx = MASTER_INVOICES.findIndex(i => i.invoiceNo === invNo);

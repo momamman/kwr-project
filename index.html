@@ -269,13 +269,13 @@
         <!-- All Invoices Table List -->
         <div class="table-scroll">
           <table>
-          <thead>
+          <thead id="allInvoicesThead">
             <tr>
-              <th class="w-110">Invoice No.</th>
-              <th class="w-110">Date</th>
-              <th>Customer Name</th>
+              <th class="w-110 sortable" data-sort="invoiceNo">Invoice No. <span class="sort-icon" aria-hidden="true">⇅</span></th>
+              <th class="w-110 sortable" data-sort="date">Date <span class="sort-icon" aria-hidden="true">⇅</span></th>
+              <th class="sortable" data-sort="customerName">Customer Name <span class="sort-icon" aria-hidden="true">⇅</span></th>
               <th class="w-260">Customer / Company Address</th>
-              <th class="w-150">Total Rental Cost</th>
+              <th class="w-150 sortable" data-sort="totalCost">Total Rental Cost <span class="sort-icon" aria-hidden="true">⇅</span></th>
               <th class="w-160">Transaction Status</th>
               <th class="w-220 th-center">Actions</th>
             </tr>
